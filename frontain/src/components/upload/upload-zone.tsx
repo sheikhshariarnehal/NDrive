@@ -6,6 +6,7 @@ import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
 import { validateFile } from "@/types/file.types";
 import { v4 as uuidv4 } from "uuid";
+import { extractVideoThumbnail } from "@/lib/utils/video-thumbnail";
 import { Upload, FolderUp, CloudUpload } from "lucide-react";
 
 // ─── Folder / Directory Handling Utilities ──────────────────────────────────
@@ -236,6 +237,7 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     file: File,
     targetFolderId: string | null,
     fileHash: string | null,
+    thumbnailBase64?: string | null,
   ) => {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -366,6 +368,7 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
         guestSessionId: guestSessionId || null,
         folderId: targetFolderId,
         fileHash: fileHash || null,
+        thumbnail: thumbnailBase64 || null,
       }),
     });
 
@@ -501,6 +504,24 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       chunked: file.size > CHUNK_THRESHOLD,
     });
 
+    // ── Generate video thumbnail client-side (non-blocking, non-fatal) ──
+    let thumbnailBlob: Blob | null = null;
+    let thumbnailBase64: string | null = null;
+    if (file.type.startsWith("video/")) {
+      try {
+        thumbnailBlob = await extractVideoThumbnail(file);
+        if (thumbnailBlob) {
+          const buf = await thumbnailBlob.arrayBuffer();
+          thumbnailBase64 = btoa(
+            new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""),
+          );
+          console.log(`[Upload] Client thumbnail generated for ${file.name} (${thumbnailBlob.size} bytes)`);
+        }
+      } catch (thumbErr) {
+        console.warn("[Upload] Client thumbnail generation failed:", thumbErr);
+      }
+    }
+
     // Carries Telegram rate-limit info through the error chain
     class RateLimitError extends Error {
       retryAfter: number;
@@ -516,7 +537,7 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       try {
         // ── Use chunked upload for files larger than 4 MB (bypasses Vercel) ──
         if (file.size > CHUNK_THRESHOLD) {
-          const data = await uploadFileChunked(queueId, file, targetFolderId, fileHash);
+          const data = await uploadFileChunked(queueId, file, targetFolderId, fileHash, thumbnailBase64);
           addFile(data.file);
           updateUploadStatus(queueId, "success");
           return;
@@ -529,6 +550,7 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
         if (user?.id) uploadData.append("user_id", user.id);
         if (guestSessionId) uploadData.append("guest_session_id", guestSessionId);
         if (fileHash) uploadData.append("file_hash", fileHash);
+        if (thumbnailBase64) uploadData.append("thumbnail", thumbnailBase64);
 
         if (attempt === 1) {
           // First attempt: use XHR for progress tracking

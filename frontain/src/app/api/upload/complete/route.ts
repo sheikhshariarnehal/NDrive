@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateThumbnail } from "@/lib/telegram/thumbnail";
+import { uploadThumbnail, isR2Configured } from "@/lib/r2";
 
 const BACKEND_URL = process.env.TDLIB_SERVICE_URL || "http://localhost:3001";
 const API_KEY = process.env.TDLIB_SERVICE_API_KEY || "";
@@ -16,7 +17,7 @@ export const maxDuration = 300; // 5 minutes — Telegram upload can be slow for
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uploadId, fileName, fileSize, mimeType, userId, guestSessionId, folderId, fileHash } = body;
+    const { uploadId, fileName, fileSize, mimeType, userId, guestSessionId, folderId, fileHash, thumbnail: clientThumbnail } = body;
 
     if (!uploadId) {
       return NextResponse.json({ error: "Missing uploadId" }, { status: 400 });
@@ -92,7 +93,27 @@ export async function POST(request: NextRequest) {
       fileRecord.mime_type?.startsWith("image/") ||
       fileRecord.mime_type?.startsWith("video/")
     ) {
-      const r2Url = await generateThumbnail(fileRecord.id, fileRecord.telegram_message_id);
+      // 1. Try Telegram-based thumbnail (works when Telegram has processed the video)
+      let r2Url = await generateThumbnail(fileRecord.id, fileRecord.telegram_message_id);
+
+      // 2. Fallback: use client-generated thumbnail from the browser
+      if (!r2Url && clientThumbnail && isR2Configured()) {
+        try {
+          const buffer = Buffer.from(clientThumbnail, "base64");
+          if (buffer.length > 0) {
+            r2Url = await uploadThumbnail(fileRecord.id, buffer, "image/jpeg");
+            // Persist to Supabase
+            await supabase
+              .from("files")
+              .update({ thumbnail_url: r2Url })
+              .eq("id", fileRecord.id);
+            console.log(`[Upload] Client thumbnail saved to R2 for ${fileName}`);
+          }
+        } catch (thumbErr) {
+          console.error("[Upload] Client thumbnail R2 upload failed:", thumbErr);
+        }
+      }
+
       if (r2Url) fileRecord.thumbnail_url = r2Url;
     }
 

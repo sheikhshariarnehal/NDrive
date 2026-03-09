@@ -280,7 +280,15 @@ export function buildSendParams(
     return {
       _: "sendMessage",
       chat_id: chatId,
-      input_message_content: { _: "inputMessageVideo", video: inputFile, caption },
+      input_message_content: {
+        _: "inputMessageVideo",
+        video: inputFile,
+        caption,
+        supports_streaming: true,
+        // Let TDLib/Telegram auto-detect dimensions & generate thumbnails
+        width: 0,
+        height: 0,
+      },
     };
   }
   if (mimeType.startsWith("audio/")) {
