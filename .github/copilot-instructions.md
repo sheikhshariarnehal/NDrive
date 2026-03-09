@@ -147,7 +147,7 @@ CACHE_TTL_HOURS=6
 6. **Never delete TDLib-managed files** (in `tdlib-files/documents/`, `tdlib-files/videos/`) — only app-managed temp files (`tdlib-files/temp/botapi_*`) may be deleted
 7. **Range requests** must be forwarded through both Vercel proxy routes and the TDLib download handler
 8. **All `setInterval` / `setTimeout` background timers** in the TDLib service must call `.unref()`
-9. **Supabase thumbnail_url column** stores base64 data-URIs — never store raw URLs there as they expire
+9. **Supabase thumbnail_url column** stores Cloudflare R2 public URLs. Legacy base64 data-URIs are migrated to R2 on first access. For new files, thumbnails are fetched from TDLib and uploaded to R2 on demand via `/api/thumbnail/[id]`.
 10. **Guest sessions** use localStorage UUID with 90-day expiry — never break this flow
 
 ---
@@ -176,6 +176,11 @@ SUPABASE_SERVICE_ROLE_KEY=
 TDLIB_SERVICE_URL=            # https://your-do-app.ondigitalocean.app
 TDLIB_SERVICE_API_KEY=        # same value as backend
 NEXT_PUBLIC_APP_URL=          # https://your-vercel-app.vercel.app
+R2_ACCOUNT_ID=                # Cloudflare account ID
+R2_ACCESS_KEY_ID=             # R2 S3-compatible access key
+R2_SECRET_ACCESS_KEY=         # R2 S3-compatible secret
+R2_BUCKET_NAME=ndrive         # R2 bucket name
+R2_PUBLIC_URL=                # e.g. https://pub-xxx.r2.dev
 ```
 
 ---
@@ -198,4 +203,5 @@ NEXT_PUBLIC_APP_URL=          # https://your-vercel-app.vercel.app
 | `frontain/src/store/files-store.ts` | Zustand file/folder state |
 | `frontain/src/store/ui-store.ts` | Zustand UI state (modals, preview) |
 | `frontain/src/lib/realtime/use-realtime-files.ts` | Supabase realtime subscription |
+| `frontain/src/lib/r2.ts` | Cloudflare R2 client — thumbnail upload/delete/URL helpers |
 | `frontain/supabase/schema.sql` | Full DB schema |

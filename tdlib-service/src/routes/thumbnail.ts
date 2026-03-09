@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import fs from "fs";
 import { getTDLibClient } from "../tdlib-client.js";
 import { fileToBase64DataUri } from "../utils/stream.js";
+import { isR2Configured, uploadThumbnailToR2 } from "../utils/r2.js";
 
 const router = Router();
 
@@ -98,7 +99,7 @@ router.get(
  * Body: { chat_id, message_id }
  */
 router.post("/from-message", async (req: Request, res: Response) => {
-  const { chat_id, message_id } = req.body;
+  const { chat_id, message_id, file_id } = req.body;
 
   if (!chat_id || !message_id) {
     res.status(400).json({ error: "chat_id and message_id required" });
@@ -194,8 +195,25 @@ router.post("/from-message", async (req: Request, res: Response) => {
       }
     }
 
+    // ── Upload to R2 if configured and caller provided file_id ──
+    let r2Url: string | null = null;
+    if (file_id && isR2Configured() && thumbnailData) {
+      try {
+        const match = thumbnailData.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          const contentType = match[1];
+          const buffer = Buffer.from(match[2], "base64");
+          r2Url = await uploadThumbnailToR2(file_id, buffer, contentType);
+        }
+      } catch (uploadErr) {
+        console.error("[Thumbnail] R2 upload failed:", uploadErr);
+        // Non-fatal — still return base64 thumbnail as fallback
+      }
+    }
+
     res.json({
-      thumbnail: thumbnailData,
+      thumbnail: r2Url ? null : thumbnailData, // omit base64 when R2 URL available
+      r2_url: r2Url,
       has_minithumbnail: !!minithumbnail,
       has_full_thumbnail: !!thumbnailFileId,
     });
