@@ -6,6 +6,51 @@ import { isR2Configured, uploadThumbnailToR2 } from "../utils/r2.js";
 
 const router = Router();
 
+/** Extract thumbnail file ID and minithumbnail from a TDLib message content. */
+function extractThumbnailInfo(content: Record<string, unknown>): {
+  thumbnailFileId: number | null;
+  minithumbnail: string | null;
+} {
+  let thumbnailFileId: number | null = null;
+  let minithumbnail: string | null = null;
+
+  switch (content?._) {
+    case "messagePhoto": {
+      const photo = content.photo as Record<string, unknown>;
+      const sizes = photo?.sizes as Array<Record<string, unknown>>;
+      if (sizes?.length) {
+        const thumbFile = (sizes[0].photo as Record<string, unknown>);
+        thumbnailFileId = thumbFile?.id as number ?? null;
+      }
+      const mini = (photo?.minithumbnail as Record<string, unknown>);
+      if (mini?.data) minithumbnail = `data:image/jpeg;base64,${mini.data}`;
+      break;
+    }
+    case "messageVideo": {
+      const video = content.video as Record<string, unknown>;
+      const thumb = video?.thumbnail as Record<string, unknown>;
+      if (thumb) {
+        const thumbFile = thumb.file as Record<string, unknown>;
+        thumbnailFileId = thumbFile?.id as number ?? null;
+      }
+      const mini = (video?.minithumbnail as Record<string, unknown>);
+      if (mini?.data) minithumbnail = `data:image/jpeg;base64,${mini.data}`;
+      break;
+    }
+    case "messageDocument": {
+      const doc = content.document as Record<string, unknown>;
+      const thumb = doc?.thumbnail as Record<string, unknown>;
+      if (thumb) {
+        const thumbFile = thumb.file as Record<string, unknown>;
+        thumbnailFileId = thumbFile?.id as number ?? null;
+      }
+      break;
+    }
+  }
+
+  return { thumbnailFileId, minithumbnail };
+}
+
 /**
  * GET /api/thumbnail/:remoteFileId
  * Get a persistent thumbnail for a file stored in Telegram.
@@ -37,20 +82,6 @@ router.get(
       });
 
       const tdlibFileId = remoteFile.id as number;
-
-      // Get the full file info to find the thumbnail
-      const fileInfo = await client.invoke({
-        _: "getFile",
-        file_id: tdlibFileId,
-      });
-
-      // For thumbnails, we need the original message.
-      // Instead, try to download a small version of the file itself.
-      // TDLib stores minithumbnails inline in the file metadata.
-
-      // First, let's try to get the file's thumbnail if it exists
-      // We need to find the message that contains this file to get its thumbnail
-      // Alternative approach: use the file_id directly to download a smaller version
 
       // Download the thumbnail file (small file, fast)
       const downloadedThumb = await client.invoke({
@@ -106,113 +137,79 @@ router.post("/from-message", async (req: Request, res: Response) => {
     return;
   }
 
+  const parsedChatId = parseInt(chat_id, 10);
+  const parsedMessageId = parseInt(message_id, 10);
+  if (Number.isNaN(parsedChatId) || Number.isNaN(parsedMessageId)) {
+    res.status(400).json({ error: "chat_id and message_id must be numeric" });
+    return;
+  }
+
   try {
     const client = await getTDLibClient();
 
-    // Get the message from the channel
     const message = await client.invoke({
       _: "getMessage",
-      chat_id: parseInt(chat_id, 10),
-      message_id: parseInt(message_id, 10),
+      chat_id: parsedChatId,
+      message_id: parsedMessageId,
     });
 
     const content = message.content as Record<string, unknown>;
-    let thumbnailFileId: number | null = null;
-
-    // Extract thumbnail based on content type
-    switch (content?._) {
-      case "messagePhoto": {
-        const photo = content.photo as Record<string, unknown>;
-        const sizes = photo?.sizes as Array<Record<string, unknown>>;
-        if (sizes && sizes.length > 0) {
-          // Use smallest size as thumbnail
-          const smallest = sizes[0];
-          const thumbFile = smallest.photo as Record<string, unknown>;
-          thumbnailFileId = thumbFile?.id as number;
-        }
-        break;
-      }
-      case "messageVideo": {
-        const video = content.video as Record<string, unknown>;
-        const thumb = video?.thumbnail as Record<string, unknown>;
-        if (thumb) {
-          const thumbFile = thumb.file as Record<string, unknown>;
-          thumbnailFileId = thumbFile?.id as number;
-        }
-        break;
-      }
-      case "messageDocument": {
-        const doc = content.document as Record<string, unknown>;
-        const thumb = doc?.thumbnail as Record<string, unknown>;
-        if (thumb) {
-          const thumbFile = thumb.file as Record<string, unknown>;
-          thumbnailFileId = thumbFile?.id as number;
-        }
-        break;
-      }
-    }
-
-    // Also check for minithumbnail (inline tiny preview)
-    let minithumbnail: string | null = null;
-    switch (content?._) {
-      case "messagePhoto": {
-        const photo = content.photo as Record<string, unknown>;
-        const mini = photo?.minithumbnail as Record<string, unknown>;
-        if (mini?.data) {
-          minithumbnail = `data:image/jpeg;base64,${mini.data}`;
-        }
-        break;
-      }
-      case "messageVideo": {
-        const video = content.video as Record<string, unknown>;
-        const mini = video?.minithumbnail as Record<string, unknown>;
-        if (mini?.data) {
-          minithumbnail = `data:image/jpeg;base64,${mini.data}`;
-        }
-        break;
-      }
-    }
+    const { thumbnailFileId, minithumbnail } = extractThumbnailInfo(content);
 
     if (!thumbnailFileId && !minithumbnail) {
       res.status(404).json({ error: "No thumbnail available for this message" });
       return;
     }
 
-    let thumbnailData: string | null = minithumbnail;
-
-    // If we have a real thumbnail file, download it (better quality than minithumbnail)
+    // ── Download the real thumbnail file (better quality than minithumbnail) ──
+    let localPath: string | null = null;
     if (thumbnailFileId) {
-      const downloadedThumb = await client.invoke({
+      const downloaded = await client.invoke({
         _: "downloadFile",
         file_id: thumbnailFileId,
         priority: 32,
         synchronous: true,
       });
-
-      const localPath = downloadedThumb.local?.path as string;
-      if (localPath && fs.existsSync(localPath)) {
-        thumbnailData = fileToBase64DataUri(localPath, "image/jpeg");
-      }
+      const p = downloaded.local?.path as string;
+      if (p && fs.existsSync(p)) localPath = p;
     }
 
-    // ── Upload to R2 if configured and caller provided file_id ──
+    // ── Upload raw file buffer to R2 (skip base64 round-trip) ──
     let r2Url: string | null = null;
-    if (file_id && isR2Configured() && thumbnailData) {
+    if (file_id && isR2Configured()) {
       try {
-        const match = thumbnailData.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-          const contentType = match[1];
-          const buffer = Buffer.from(match[2], "base64");
-          r2Url = await uploadThumbnailToR2(file_id, buffer, contentType);
+        if (localPath) {
+          // Fast path: read file bytes directly → R2
+          const buffer = fs.readFileSync(localPath);
+          r2Url = await uploadThumbnailToR2(file_id, buffer, "image/jpeg");
+        } else if (minithumbnail) {
+          // Fallback: decode minithumbnail base64 → R2
+          const match = minithumbnail.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            r2Url = await uploadThumbnailToR2(
+              file_id,
+              Buffer.from(match[2], "base64"),
+              match[1],
+            );
+          }
         }
       } catch (uploadErr) {
         console.error("[Thumbnail] R2 upload failed:", uploadErr);
-        // Non-fatal — still return base64 thumbnail as fallback
+      }
+    }
+
+    // Only build base64 if R2 wasn't used (saves CPU + memory)
+    let thumbnailData: string | null = null;
+    if (!r2Url) {
+      if (localPath) {
+        thumbnailData = fileToBase64DataUri(localPath, "image/jpeg");
+      } else {
+        thumbnailData = minithumbnail;
       }
     }
 
     res.json({
-      thumbnail: r2Url ? null : thumbnailData, // omit base64 when R2 URL available
+      thumbnail: r2Url ? null : thumbnailData,
       r2_url: r2Url,
       has_minithumbnail: !!minithumbnail,
       has_full_thumbnail: !!thumbnailFileId,
