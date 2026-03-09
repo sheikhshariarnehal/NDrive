@@ -2,6 +2,7 @@
 import { uploadToBackend } from "@/lib/telegram/upload";
 import { createClient } from "@/lib/supabase/server";
 import { generateThumbnail } from "@/lib/telegram/thumbnail";
+import { uploadThumbnail, isR2Configured } from "@/lib/r2";
 
 // Configure route to handle large file uploads
 export const maxDuration = 300; // 5 minutes
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
     const userId = formData.get("user_id") as string | null;
     const guestSessionId = formData.get("guest_session_id") as string | null;
     const fileHash = formData.get("file_hash") as string | null;
+    const clientThumbnail = formData.get("thumbnail") as string | null;
 
     console.log("Upload request:", { 
       hasFile: !!file, 
@@ -91,7 +93,27 @@ export async function POST(request: NextRequest) {
       fileRecord.mime_type?.startsWith("image/") ||
       fileRecord.mime_type?.startsWith("video/")
     ) {
-      const r2Url = await generateThumbnail(fileRecord.id, fileRecord.telegram_message_id);
+      // 1. Try Telegram-based thumbnail (works when Telegram has processed the video)
+      let r2Url = await generateThumbnail(fileRecord.id, fileRecord.telegram_message_id);
+
+      // 2. Fallback: use client-generated thumbnail from the browser
+      if (!r2Url && clientThumbnail && isR2Configured()) {
+        try {
+          const buffer = Buffer.from(clientThumbnail, "base64");
+          if (buffer.length > 0) {
+            r2Url = await uploadThumbnail(fileRecord.id, buffer, "image/jpeg");
+            // Persist to Supabase
+            await supabase
+              .from("files")
+              .update({ thumbnail_url: r2Url })
+              .eq("id", fileRecord.id);
+            console.log(`[Upload] Client thumbnail saved to R2 for ${file.name}`);
+          }
+        } catch (thumbErr) {
+          console.error("[Upload] Client thumbnail R2 upload failed:", thumbErr);
+        }
+      }
+
       if (r2Url) fileRecord.thumbnail_url = r2Url;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useUIStore } from "@/store/ui-store";
 import { FileContextMenu } from "@/components/context-menu/file-context-menu";
 import { getFileCategory } from "@/types/file.types";
@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   Presentation,
   ListOrdered,
+  Play,
 } from "lucide-react";
 import type { DbFile } from "@/types/file.types";
 
@@ -50,28 +51,27 @@ function getSmartConfig(mimeType: string, category: string) {
 
 /**
  * Returns the thumbnail src for a file card.
- * - R2 URL in thumbnail_url → use directly (zero API calls)
+ * - R2 URL in thumbnail_url → use directly (zero API calls, R2 serves with immutable cache)
  * - base64 data-URI → use inline
- * - null → fall back to /api/thumbnail/[id] which fetches from TDLib + uploads to R2
+ * - Telegram Bot API URLs → skip (blocked by ORB/CORS in browser)
+ * - null → no thumbnail available (don't hit API — avoids wasteful 404s)
  */
-function getThumbnailSrc(file: DbFile, category: string): string | null {
+function getThumbnailSrc(file: DbFile): string | null {
   if (file.thumbnail_url) {
-    // R2 URL or base64 data-URI — use directly
+    // Skip Telegram Bot API URLs — blocked by browser ORB/CORS
+    if (file.thumbnail_url.includes("api.telegram.org")) return null;
     if (file.thumbnail_url.startsWith("https://") || file.thumbnail_url.startsWith("data:"))
       return file.thumbnail_url;
-  }
-  // Fallback: trigger on-demand fetch + R2 upload via API route
-  if (category === "image" || category === "video") {
-    return `/api/thumbnail/${file.id}`;
   }
   return null;
 }
 
-/** Whether a file category should attempt to show a thumbnail preview.
- *  SVGs are sent as documents by Telegram — no thumbnail available. */
+/** Whether a file category should attempt to show a thumbnail preview. */
 function shouldShowThumbnail(file: DbFile, category: string): boolean {
   if (file.mime_type === "image/svg+xml") return false;
-  return category === "image" || category === "video";
+  if (category !== "image" && category !== "video") return false;
+  // Only show thumbnail if we have a URL — avoids 404 API calls for files without thumbnails
+  return !!getThumbnailSrc(file);
 }
 
 export function FileCard({ file }: FileCardProps) {
@@ -82,11 +82,15 @@ export function FileCard({ file }: FileCardProps) {
   const Icon = config.icon;
 
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
-  const thumbnailSrc = hasThumbnail ? getThumbnailSrc(file, category) : null;
+  const thumbnailSrc = hasThumbnail ? getThumbnailSrc(file) : null;
+
+  const onImgLoad = useCallback(() => setImgLoaded(true), []);
+  const onImgError = useCallback(() => setImgError(true), []);
 
   // IntersectionObserver — only load thumbnails when the card enters the viewport
   useEffect(() => {
@@ -133,18 +137,34 @@ export function FileCard({ file }: FileCardProps) {
         className="relative w-full flex-1 border-t border-[#e0e0e0] overflow-hidden"
         onClick={() => setPreviewFileId(file.id)}
       >
-        {hasThumbnail && thumbnailSrc && isVisible ? (
+        {/* Placeholder background — always rendered, visible until image loads */}
+        <div className={`absolute inset-0 flex items-center justify-center ${config.bgClass}`}>
+          {category !== "video" && (
+            <Icon className="h-12 w-12 opacity-20" style={{ color: config.color }} />
+          )}
+        </div>
+
+        {/* Thumbnail image — fades in over the placeholder */}
+        {hasThumbnail && thumbnailSrc && isVisible && (
           <img
             src={thumbnailSrc}
-            alt={file.name}
-            className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
+            alt=""
+            className={`relative w-full h-full object-cover transition-opacity duration-300 ${
+              imgLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={onImgLoad}
+            onError={onImgError}
             loading="lazy"
             decoding="async"
           />
-        ) : (
-          <div className={`flex items-center justify-center w-full h-full ${config.bgClass}`}>
-            <Icon className="h-12 w-12 opacity-20" style={{ color: config.color }} />
+        )}
+
+        {/* Play icon overlay for video files */}
+        {category === "video" && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black/40">
+              <Play className="h-5 w-5 text-white fill-white translate-x-0.5" />
+            </div>
           </div>
         )}
       </div>

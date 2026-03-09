@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { List as VirtualList } from "react-window";
 import Link from "next/link";
 import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
@@ -149,7 +148,6 @@ function sortFiles(files: DbFile[], key: SortKey, dir: SortDir): DbFile[] {
 const ROW_HEIGHT = 48;
 const HEADER_HEIGHT = 40;
 const FILTER_BAR_HEIGHT = 48;
-const MAX_VISIBLE_ROWS = 20;
 
 // ─── Filter Chip ─────────────────────────────────────────────────────
 function FilterChip({ label }: { label: string }) {
@@ -752,11 +750,6 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
     ]
   );
 
-  const listHeight = Math.min(
-    sortedFiles.length * ROW_HEIGHT,
-    MAX_VISIBLE_ROWS * ROW_HEIGHT
-  );
-
   // ─── Empty state ──────────────────────────────────────────────────
   if (files.length === 0 && folders.length === 0) {
     return (
@@ -775,7 +768,7 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
   }
 
   return (
-    <div ref={containerRef} className="w-full mt-2 overflow-x-hidden">
+    <div ref={containerRef} className="w-full mt-2 overflow-x-clip">
       {/* ─── Top Action Bar (filters / selection) ─────────────────── */}
       <TopActionBar
         hasSelection={hasSelection}
@@ -789,9 +782,9 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
         topRightSlot={topRightSlot}
       />
 
-      {/* ─── Column Header (always visible) ───────────────────────── */}
+      {/* ─── Column Header (sticky) ──────────────────────────────── */}
       <div
-        className="flex items-center border-b border-[#e8eaed]"
+        className="flex items-center border-b border-[#e8eaed] sticky -top-5 sm:-top-6 z-10 bg-white"
         style={{ height: HEADER_HEIGHT }}
         role="row"
       >
@@ -874,28 +867,18 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
       )}
 
       {/* ─── File rows ────────────────────────────────────────────── */}
-      {sortedFiles.length > 0 &&
-        (sortedFiles.length <= 50 ? (
-          <div role="rowgroup">
-            {sortedFiles.map((file, i) => (
-              <FileRow
-                key={file.id}
-                index={i}
-                style={{ height: ROW_HEIGHT }}
-                {...rowProps}
-              />
-            ))}
-          </div>
-        ) : (
-          <VirtualList<RowProps>
-            rowComponent={FileRow}
-            rowCount={sortedFiles.length}
-            rowHeight={ROW_HEIGHT}
-            rowProps={rowProps}
-            overscanCount={8}
-            style={{ height: listHeight }}
-          />
-        ))}
+      {sortedFiles.length > 0 && (
+        <div role="rowgroup">
+          {sortedFiles.map((file, i) => (
+            <FileRow
+              key={file.id}
+              index={i}
+              style={{ height: ROW_HEIGHT }}
+              {...rowProps}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
