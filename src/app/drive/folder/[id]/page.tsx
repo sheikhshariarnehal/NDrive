@@ -24,6 +24,7 @@ import {
 import { ChevronRight, FolderOpen, Upload, Plus, FolderPlus, FolderUp, LayoutGrid, List } from "lucide-react";
 import Link from "next/link";
 import type { BreadcrumbItem, DbFile } from "@/types/file.types";
+import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 
 export default function FolderPage({
   params,
@@ -34,6 +35,7 @@ export default function FolderPage({
   const { user, guestSessionId } = useAuth();
   const { files, folders, viewMode, setViewMode, setCurrentFolderId, mergeFiles } = useFilesStore();
   const { openFilePicker, openFolderPicker, setNewFolderModalOpen } = useUIStore();
+  const effectiveViewMode = useEffectiveViewMode();
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 
   const folderFiles = files.filter((f) => f.folder_id === id);
@@ -88,7 +90,7 @@ export default function FolderPage({
   }, [id, currentFolder, folders, setCurrentFolderId]);
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 sm:pt-4 space-y-6">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-1 text-sm flex-wrap">
         {breadcrumbs.map((crumb, index) => (
@@ -150,7 +152,7 @@ export default function FolderPage({
         </Button>
 
         <TooltipProvider>
-          <div className="flex items-center border rounded-lg overflow-hidden shadow-sm bg-white ml-auto">
+          <div className="hidden sm:flex items-center border rounded-lg overflow-hidden shadow-sm bg-white ml-auto">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -182,7 +184,7 @@ export default function FolderPage({
       </div>
 
       {/* List view — folders and files unified in a single FileList (mirrors dashboard behaviour) */}
-      {viewMode === "list" ? (
+      {effectiveViewMode === "list" ? (
         subFolders.length > 0 || folderFiles.length > 0 ? (
           <FileList files={folderFiles} folders={subFolders} />
         ) : (

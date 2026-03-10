@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="pt-3 sm:pt-4 max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage your account preferences</p>

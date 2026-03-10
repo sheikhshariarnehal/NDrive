@@ -143,7 +143,7 @@ export default function DashboardLayout({
 
           <main className="flex-1 overflow-hidden px-1.5 pb-1.5 sm:px-2 sm:pb-2">
             <div className="bg-white rounded-2xl h-full shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-y-auto w-full px-3 sm:px-4 lg:px-5 py-3 sm:py-4">
+              <div className="flex-1 overflow-y-auto w-full px-3 sm:px-4 lg:px-5 pb-3 sm:pb-4">
                 {children}
               </div>
             </div>

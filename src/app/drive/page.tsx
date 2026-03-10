@@ -12,33 +12,21 @@ import { SuggestedFiles } from "@/components/suggested-files/suggested-files";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Plus,
-  Upload,
-  FolderPlus,
-  FolderUp,
-  LayoutGrid,
-  List,
-  Loader2,
-} from "lucide-react";
+import { LayoutGrid, List, Loader2, Upload } from "lucide-react";
 import type { DbFile } from "@/types/file.types";
+import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 
 export default function DashboardPage() {
   const { user, guestSessionId } = useAuth();
   const { files, folders, viewMode, setViewMode, isLoading, searchQuery, mergeFiles } =
     useFilesStore();
-  const { setNewFolderModalOpen, openFilePicker, openFolderPicker } = useUIStore();
+  const { openFilePicker } = useUIStore();
+  const effectiveViewMode = useEffectiveViewMode();
 
   // ── Supplementary fetch: load root-level files that may have been
   // cut off by the layout's initial limit ──────────────────────────
@@ -68,11 +56,6 @@ export default function DashboardPage() {
         }
       });
   }, [user?.id, guestSessionId, mergeFiles]);
-
-  const displayName =
-    user?.user_metadata?.display_name ||
-    user?.email?.split("@")[0] ||
-    "Guest";
 
   // Filter files and folders for root level (no parent) and search
   const rootFolders = folders.filter((f) => !f.parent_id);
@@ -107,87 +90,67 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Welcome back, {displayName}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Manage and organize your files with ease
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 text-sm font-medium shadow-sm hover:shadow">
-                <Plus className="h-4 w-4 mr-2" />
-                Create
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setNewFolderModalOpen(true)}>
-                <FolderPlus className="h-4 w-4 mr-2" />
-                New Folder
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFilePicker?.()}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload File
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFolderPicker?.()}>
-                <FolderUp className="h-4 w-4 mr-2" />
-                Upload Folder
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10 text-sm font-medium shadow-sm hover:shadow"
-            onClick={() => openFilePicker?.()}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            <span className="hidden xs:inline">Upload</span>
-          </Button>
-
-          {/* View mode toggle */}
-          <TooltipProvider>
-            <div className="flex items-center border rounded-lg overflow-hidden shadow-sm bg-white">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-10 w-10 rounded-none"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Grid view</p></TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-10 w-10 rounded-none"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>List view</p></TooltipContent>
-              </Tooltip>
+    <div className="space-y-5 sm:space-y-6">
+      {/* Google Drive-style compact sticky header */}
+      <div className="flex items-center h-14 sticky top-0 z-20 bg-white -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5">
+        <h1 className="text-[22px] font-normal text-[#202124] flex-1 min-w-0 truncate">My Drive</h1>
+        <TooltipProvider>
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full text-[#444746] hover:bg-[#f1f3f4]"
+                  onClick={() => openFilePicker?.()}
+                >
+                  <Upload className="h-[18px] w-[18px]" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Upload file</p></TooltipContent>
+            </Tooltip>
+            <div className="hidden sm:flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-9 w-9 rounded-full ${
+                    viewMode === "list"
+                      ? "bg-[#c2e7ff] text-[#001d35] hover:bg-[#c2e7ff]"
+                      : "text-[#444746] hover:bg-[#f1f3f4]"
+                  }`}
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-[18px] w-[18px]" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>List view</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-9 w-9 rounded-full ${
+                    viewMode === "grid"
+                      ? "bg-[#c2e7ff] text-[#001d35] hover:bg-[#c2e7ff]"
+                      : "text-[#444746] hover:bg-[#f1f3f4]"
+                  }`}
+                  onClick={() => setViewMode("grid")}
+                >
+                  <LayoutGrid className="h-[18px] w-[18px]" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Grid view</p></TooltipContent>
+            </Tooltip>
             </div>
-          </TooltipProvider>
-        </div>
+          </div>
+        </TooltipProvider>
       </div>
 
       {/* Folders Section (grid view only – in list view, folders are inlined in FileList) */}
-      {viewMode === "grid" && filteredFolders.length > 0 && (
+      {effectiveViewMode === "grid" && filteredFolders.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-[#202124] mb-3">Folders</h2>
           <FolderGrid folders={filteredFolders} />
@@ -195,7 +158,7 @@ export default function DashboardPage() {
       )}
 
       {/* Suggested from your activity */}
-      {!searchQuery && files.length > 0 && viewMode !== "list" && (
+      {!searchQuery && files.length > 0 && effectiveViewMode !== "list" && (
         <section>
           <h2 className="text-sm font-medium text-[#202124] mb-3">
             Suggested
@@ -209,7 +172,7 @@ export default function DashboardPage() {
         <Tabs defaultValue="recent" className="w-full">
           {/* Tabs rendered inside FileList's filter bar row via topRightSlot;
               for grid view (no FileList) we still need them visible */}
-          {viewMode === "grid" && (
+          {effectiveViewMode === "grid" && (
             <div className="hidden sm:flex items-center justify-end mb-3">
               <TabsList className="h-8 bg-[#f1f3f4] rounded-full px-1">
                 <TabsTrigger value="recent" className="text-xs px-3.5 h-6 rounded-full font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">Recent</TabsTrigger>
@@ -219,7 +182,7 @@ export default function DashboardPage() {
           )}
 
           <TabsContent value="recent">
-            {viewMode === "grid" ? (
+            {effectiveViewMode === "grid" ? (
               filteredFiles.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                   {filteredFiles.map((file) => (
@@ -233,6 +196,7 @@ export default function DashboardPage() {
               <FileList
                 files={filteredFiles}
                 folders={filteredFolders}
+                stickyOffset={56}
                 topRightSlot={
                   <TabsList className="h-8 bg-[#f1f3f4] rounded-full px-1">
                     <TabsTrigger value="recent" className="text-xs px-3.5 h-6 rounded-full font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">Recent</TabsTrigger>
@@ -244,7 +208,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="starred">
-            {viewMode === "grid" ? (
+            {effectiveViewMode === "grid" ? (
               starredFiles.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                   {starredFiles.map((file) => (
@@ -257,6 +221,7 @@ export default function DashboardPage() {
             ) : (
               <FileList
                 files={starredFiles}
+                stickyOffset={56}
                 topRightSlot={
                   <TabsList className="h-8 bg-[#f1f3f4] rounded-full px-1">
                     <TabsTrigger value="recent" className="text-xs px-3.5 h-6 rounded-full font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">Recent</TabsTrigger>
