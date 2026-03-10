@@ -73,6 +73,8 @@ interface FileListProps {
   files: DbFile[];
   folders?: DbFolder[];
   topRightSlot?: React.ReactNode;
+  stickyOffset?: number;
+  stickyOffsetClass?: string;
 }
 
 // ─── Google Drive icon + color config ─────────────────────────────────
@@ -561,7 +563,7 @@ function SortHeaderButton({
 }
 
 // ─── Main FileList Component ─────────────────────────────────────────
-export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
+export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, stickyOffsetClass }: FileListProps) {
   const {
     selectedFiles,
     toggleFileSelection,
@@ -769,25 +771,30 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
 
   return (
     <div ref={containerRef} className="w-full mt-2 overflow-x-clip">
-      {/* ─── Top Action Bar (filters / selection) ─────────────────── */}
-      <TopActionBar
-        hasSelection={hasSelection}
-        selectionCount={selectedFiles.length}
-        onClearSelection={handleClearSelection}
-        onBulkShare={handleBulkShare}
-        onBulkDownload={handleBulkDownload}
-        onBulkMove={() => {}}
-        onBulkDelete={handleBulkDelete}
-        onBulkCopyLink={() => {}}
-        topRightSlot={topRightSlot}
-      />
-
-      {/* ─── Column Header (sticky) ──────────────────────────────── */}
+      {/* ─── Sticky wrapper: filter bar + column header ───────────── */}
       <div
-        className="flex items-center border-b border-[#e8eaed] sticky -top-5 sm:-top-6 z-10 bg-white"
-        style={{ height: HEADER_HEIGHT }}
-        role="row"
+        className={`sticky z-10 bg-white ${stickyOffsetClass ?? ""}`}
+        style={stickyOffsetClass ? undefined : { top: stickyOffset }}
       >
+        {/* ─── Top Action Bar (filters / selection) ─────────────── */}
+        <TopActionBar
+          hasSelection={hasSelection}
+          selectionCount={selectedFiles.length}
+          onClearSelection={handleClearSelection}
+          onBulkShare={handleBulkShare}
+          onBulkDownload={handleBulkDownload}
+          onBulkMove={() => {}}
+          onBulkDelete={handleBulkDelete}
+          onBulkCopyLink={() => {}}
+          topRightSlot={topRightSlot}
+        />
+
+        {/* ─── Column Header ──────────────────────────────────────── */}
+        <div
+          className="flex items-center border-b border-[#e8eaed]"
+          style={{ height: HEADER_HEIGHT }}
+          role="row"
+        >
         {/* Select-all checkbox */}
         <div className={`${COL.icon} flex-shrink-0 flex items-center justify-center`}>
           {(hasSelection || sortedFiles.length > 0) && (
@@ -851,6 +858,8 @@ export function FileList({ files, folders = [], topRightSlot }: FileListProps) {
           </button>
         </div>
       </div>
+      </div>
+      {/* ─── end sticky wrapper ───────────────────────────────────── */}
 
       {/* ─── Folder rows (always rendered directly, before files) ──── */}
       {folders.length > 0 && (

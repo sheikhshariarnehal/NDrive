@@ -4,9 +4,11 @@ import { useFilesStore } from "@/store/files-store";
 import { FileList } from "@/components/file-list/file-list";
 import { FileCard } from "@/components/file-grid/file-card";
 import { Clock } from "lucide-react";
+import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 
 export default function RecentPage() {
-  const { files, viewMode } = useFilesStore();
+  const { files } = useFilesStore();
+  const viewMode = useEffectiveViewMode();
 
   const recentFiles = [...files]
     .sort(
@@ -16,7 +18,7 @@ export default function RecentPage() {
     .slice(0, 50);
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 sm:pt-4 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#202124]">Recent Files</h1>
         <p className="text-sm text-[#5f6368]">
