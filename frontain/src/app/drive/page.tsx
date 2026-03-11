@@ -93,7 +93,8 @@ export default function DashboardPage() {
         <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4">
           <div className="h-5 w-24 bg-[#f1f3f4] rounded animate-pulse" />
         </div>
-        {effectiveViewMode === "grid" ? <GridViewSkeleton /> : <ListViewSkeleton />}
+        <div className="skeleton-grid"><GridViewSkeleton /></div>
+        <div className="skeleton-list"><ListViewSkeleton /></div>
       </div>
     );
   }

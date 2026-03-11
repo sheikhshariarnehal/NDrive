@@ -150,7 +150,17 @@ export const useFilesStore = create<FilesState>((set) => ({
     })),
 
   // UI actions
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setViewMode: (mode) => {
+    try {
+      localStorage.setItem("viewMode", mode);
+      if (mode === "grid") {
+        document.documentElement.setAttribute("data-view-mode", "grid");
+      } else {
+        document.documentElement.removeAttribute("data-view-mode");
+      }
+    } catch {}
+    set({ viewMode: mode });
+  },
   setSelectedFiles: (ids) => set({ selectedFiles: ids }),
   toggleFileSelection: (id) =>
     set((state) => ({

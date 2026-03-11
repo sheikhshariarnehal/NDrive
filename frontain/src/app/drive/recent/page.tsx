@@ -26,7 +26,8 @@ export default function RecentPage() {
           <div className="h-6 w-32 bg-[#f1f3f4] rounded animate-pulse" />
           <div className="h-3 w-56 bg-[#f1f3f4] rounded animate-pulse mt-2" />
         </div>
-        {viewMode === "grid" ? <GridViewSkeleton folderCount={0} fileCount={8} /> : <ListViewSkeleton rowCount={8} />}
+        <div className="skeleton-grid"><GridViewSkeleton folderCount={0} fileCount={8} /></div>
+        <div className="skeleton-list"><ListViewSkeleton rowCount={8} /></div>
       </div>
     );
   }

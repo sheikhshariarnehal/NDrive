@@ -20,7 +20,8 @@ export default function StarredPage() {
           <div className="h-6 w-32 bg-[#f1f3f4] rounded animate-pulse" />
           <div className="h-3 w-56 bg-[#f1f3f4] rounded animate-pulse mt-2" />
         </div>
-        {viewMode === "grid" ? <GridViewSkeleton folderCount={0} fileCount={6} /> : <ListViewSkeleton rowCount={6} />}
+        <div className="skeleton-grid"><GridViewSkeleton folderCount={0} fileCount={6} /></div>
+        <div className="skeleton-list"><ListViewSkeleton rowCount={6} /></div>
       </div>
     );
   }

@@ -99,7 +99,8 @@ export default function FolderPage({
           <div className="h-4 w-4 bg-[#f1f3f4] rounded animate-pulse" />
           <div className="h-4 w-24 bg-[#f1f3f4] rounded animate-pulse" />
         </div>
-        {effectiveViewMode === "grid" ? <GridViewSkeleton folderCount={1} fileCount={8} /> : <ListViewSkeleton rowCount={8} />}
+        <div className="skeleton-grid"><GridViewSkeleton folderCount={1} fileCount={8} /></div>
+        <div className="skeleton-list"><ListViewSkeleton rowCount={8} /></div>
       </div>
     );
   }
