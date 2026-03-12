@@ -3,7 +3,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { getTDLibClient } from "../tdlib-client.js";
+import { sessionManager } from "../session-manager.js";
 import { cleanupTempFile } from "../utils/temp-file.js";
 import {
   invokeWithSlot,
@@ -13,7 +13,7 @@ import {
   getThumbnailDataUri,
   buildSendParams,
   buildDocumentFallbackParams,
-  ensureChannelLoaded,
+  ensureChatLoaded,
   parseFloodWait,
 } from "../utils/upload-helpers.js";
 
@@ -66,13 +66,10 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
   const localFilePath = uploadedFile.path;
 
   try {
-    const client = await getTDLibClient();
-    const channelId = process.env.TELEGRAM_CHANNEL_ID;
-
-    if (!channelId) {
-      res.status(500).json({ error: "TELEGRAM_CHANNEL_ID not configured" });
-      return;
-    }
+    // Resolve the TDLib client + target chat based on storage type
+    const storageType = (req.body.storage_type as string) || "bot";
+    const userId = req.body.user_id as string | undefined;
+    const { client, chatId } = await sessionManager.resolveClientAndChat(storageType, userId);
 
     const mimeType =
       (req.body.mime_type as string) ||
@@ -88,15 +85,15 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       res.status(400).json({ error: "Uploaded file is 0 bytes — upload may have been interrupted" });
       return;
     }
-    console.log(`[Upload] File received: ${fileName} (${fileStats.size} bytes) → ${localFilePath}`);
+    console.log(`[Upload] File received: ${fileName} (${fileStats.size} bytes) → ${localFilePath} [${storageType}]`);
 
     // Build the appropriate send params based on MIME type
-    const sendParams = buildSendParams(channelId, localFilePath, fileName, mimeType);
-    const documentFallbackParams = buildDocumentFallbackParams(channelId, localFilePath, fileName);
+    const sendParams = buildSendParams(chatId, localFilePath, fileName, mimeType);
+    const documentFallbackParams = buildDocumentFallbackParams(chatId, localFilePath, fileName);
 
-    // Ensure channel is loaded in TDLib's local chat DB
+    // Ensure chat is loaded in TDLib's local chat DB
     try {
-      await ensureChannelLoaded(client, channelId);
+      await ensureChatLoaded(client, chatId);
     } catch (chErr) {
       cleanupTempFile(localFilePath);
       res.status(400).json({ error: (chErr as Error).message });
@@ -141,6 +138,8 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       message_id: sentMessage.id,
       thumbnail_data: null, // Will be fetched by frontend if needed
       file_size: fileInfo.size,
+      chat_id: chatId,
+      storage_type: storageType,
     });
 
     // Clean up in background (don't block response)

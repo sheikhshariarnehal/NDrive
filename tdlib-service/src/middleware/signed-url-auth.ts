@@ -66,6 +66,12 @@ export function signedUrlAuth(
   if (payload.mid) {
     req.query.message_id = String(payload.mid);
   }
+  if (payload.st) {
+    req.query.storage_type = payload.st;
+  }
+  if (payload.uid) {
+    req.query.user_id = payload.uid;
+  }
 
   next();
 }

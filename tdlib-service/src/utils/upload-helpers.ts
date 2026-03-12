@@ -6,9 +6,11 @@
  */
 
 import fs from "fs";
-import { getTDLibClient } from "../tdlib-client.js";
 import { fileToBase64DataUri } from "./stream.js";
 import { acquireUploadSlot, releaseUploadSlot } from "./concurrency.js";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TDLibClient = any;
 
 // ── Re-export concurrency helpers for convenience ────────────────────────────
 export { acquireUploadSlot, releaseUploadSlot } from "./concurrency.js";
@@ -26,7 +28,7 @@ export interface ProgressSession {
  * The slot is released in the `finally` block regardless of outcome.
  */
 export async function invokeWithSlot(
-  client: Awaited<ReturnType<typeof getTDLibClient>>,
+  client: TDLibClient,
   params: Parameters<typeof client.invoke>[0],
 ): Promise<Record<string, unknown>> {
   await acquireUploadSlot();
@@ -57,7 +59,7 @@ export function isMediaRejection(msg: string): boolean {
  * so even very large files (1-2 GB) won't time out while data is moving.
  */
 export async function waitForMessageSent(
-  client: Awaited<ReturnType<typeof getTDLibClient>>,
+  client: TDLibClient,
   pendingMessage: Record<string, unknown>,
   fileSize: number = 0,
   session?: ProgressSession,
@@ -240,7 +242,7 @@ export function extractFileInfo(
  * Download a thumbnail and return it as a base64 data URI, or null on failure.
  */
 export async function getThumbnailDataUri(
-  client: Awaited<ReturnType<typeof getTDLibClient>>,
+  client: TDLibClient,
   thumbnailFileId: number | null,
 ): Promise<string | null> {
   if (!thumbnailFileId) return null;
@@ -267,14 +269,13 @@ export async function getThumbnailDataUri(
  * original quality (no Telegram compression).
  */
 export function buildSendParams(
-  channelId: string,
+  chatId: number,
   localFilePath: string,
   fileName: string,
   mimeType: string,
-): Parameters<Awaited<ReturnType<typeof getTDLibClient>>["invoke"]>[0] {
+): Record<string, unknown> {
   const caption = { _: "formattedText" as const, text: fileName };
   const inputFile = { _: "inputFileLocal" as const, path: localFilePath };
-  const chatId = parseInt(channelId, 10);
 
   if (mimeType.startsWith("video/")) {
     return {
@@ -309,13 +310,13 @@ export function buildSendParams(
  * Build a document-fallback sendMessage (used when Telegram rejects a media type).
  */
 export function buildDocumentFallbackParams(
-  channelId: string,
+  chatId: number,
   localFilePath: string,
   fileName: string,
-): Parameters<Awaited<ReturnType<typeof getTDLibClient>>["invoke"]>[0] {
+): Record<string, unknown> {
   return {
     _: "sendMessage",
-    chat_id: parseInt(channelId, 10),
+    chat_id: chatId,
     input_message_content: {
       _: "inputMessageDocument",
       document: { _: "inputFileLocal" as const, path: localFilePath },
@@ -329,25 +330,24 @@ export function buildDocumentFallbackParams(
  * TDLib returns "Chat not found" if the chat hasn't been resolved yet.
  * Throws a descriptive error on failure.
  */
-export async function ensureChannelLoaded(
-  client: Awaited<ReturnType<typeof getTDLibClient>>,
-  channelId: string,
+export async function ensureChatLoaded(
+  client: TDLibClient,
+  chatId: number,
 ): Promise<void> {
-  const chatIdNum = parseInt(channelId, 10);
   try {
-    await client.invoke({ _: "getChat", chat_id: chatIdNum });
+    await client.invoke({ _: "getChat", chat_id: chatId });
   } catch {
-    console.log("[Upload] Channel not in cache, loading chats...");
+    console.log(`[Upload] Chat ${chatId} not in cache, loading chats...`);
     try {
       await client.invoke({
         _: "loadChats",
         chat_list: { _: "chatListMain" },
         limit: 100,
       });
-      await client.invoke({ _: "getChat", chat_id: chatIdNum });
+      await client.invoke({ _: "getChat", chat_id: chatId });
     } catch (loadErr) {
       throw new Error(
-        `Channel not accessible. Make sure the bot is admin in channel ${channelId}. Details: ${loadErr}`,
+        `Chat not accessible (${chatId}). Details: ${loadErr}`,
       );
     }
   }

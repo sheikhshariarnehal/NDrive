@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getTDLibClient } from "../tdlib-client.js";
+import { sessionManager } from "../session-manager.js";
 
 const router = Router();
 
@@ -21,7 +21,9 @@ router.delete(
     }
 
     try {
-      const client = await getTDLibClient();
+      const storageType = (req.query.storage_type as string) || "bot";
+      const userId = req.query.user_id as string | undefined;
+      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
 
       await client.invoke({
         _: "deleteMessages",
@@ -81,7 +83,9 @@ router.post("/cleanup", async (req: Request, res: Response) => {
   }
 
   try {
-    const client = await getTDLibClient();
+    const storageType = (req.body.storage_type as string) || "bot";
+    const userId = req.body.user_id as string | undefined;
+    const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
 
     // TDLib deleteMessages supports up to 100 messages at once
     const batchSize = 100;

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import fs from "fs";
-import { getTDLibClient } from "../tdlib-client.js";
+import { sessionManager } from "../session-manager.js";
 import { fileToBase64DataUri } from "../utils/stream.js";
 import { isR2Configured, uploadThumbnailToR2 } from "../utils/r2.js";
 
@@ -73,9 +73,9 @@ router.get(
     }
 
     try {
-      const client = await getTDLibClient();
-
-      // Resolve Bot API file_id to TDLib file object
+      const storageType = (req.query.storage_type as string) || "bot";
+      const userId = req.query.user_id as string | undefined;
+      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
       const remoteFile = await client.invoke({
         _: "getRemoteFile",
         remote_file_id: remoteFileId,
@@ -145,7 +145,9 @@ router.post("/from-message", async (req: Request, res: Response) => {
   }
 
   try {
-    const client = await getTDLibClient();
+    const storageType = (req.body.storage_type as string) || "bot";
+    const userId = req.body.user_id as string | undefined;
+    const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
 
     const message = await client.invoke({
       _: "getMessage",
@@ -198,7 +200,7 @@ router.post("/from-message", async (req: Request, res: Response) => {
       }
     }
 
-    // Only build base64 if R2 wasn't used (saves CPU + memory)
+    // Always build base64 fallback so the frontend has something to show
     let thumbnailData: string | null = null;
     if (!r2Url) {
       if (localPath) {
@@ -209,7 +211,7 @@ router.post("/from-message", async (req: Request, res: Response) => {
     }
 
     res.json({
-      thumbnail: r2Url ? null : thumbnailData,
+      thumbnail: thumbnailData,
       r2_url: r2Url,
       has_minithumbnail: !!minithumbnail,
       has_full_thumbnail: !!thumbnailFileId,

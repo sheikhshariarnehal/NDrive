@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { getTDLibClient } from "../tdlib-client.js";
+import { sessionManager } from "../session-manager.js";
 import { streamFileToResponse } from "../utils/stream.js";
 
 const router = Router();
@@ -370,6 +370,8 @@ router.get(
     const messageId = req.query.message_id
       ? parseInt(req.query.message_id as string, 10)
       : undefined;
+    const storageType = (req.query.storage_type as string) || "bot";
+    const userId = req.query.user_id as string | undefined;
 
     if (!remoteFileId) {
       res.status(400).json({ error: "Remote file ID required" });
@@ -396,7 +398,7 @@ router.get(
     }
 
     try {
-      const client = await getTDLibClient();
+      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
 
       // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -651,7 +653,9 @@ router.get(
     const { remoteFileId } = req.params;
 
     try {
-      const client = await getTDLibClient();
+      const storageTypeStatus = (req.query.storage_type as string) || "bot";
+      const userIdStatus = req.query.user_id as string | undefined;
+      const { client } = await sessionManager.resolveClientAndChat(storageTypeStatus, userIdStatus);
 
       const remoteFile = await client.invoke({
         _: "getRemoteFile",

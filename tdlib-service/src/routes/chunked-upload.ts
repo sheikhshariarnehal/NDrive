@@ -18,7 +18,7 @@ import path from "path";
 import crypto from "crypto";
 import os from "os";
 import { fileURLToPath } from "url";
-import { getTDLibClient } from "../tdlib-client.js";
+import { sessionManager } from "../session-manager.js";
 import { cleanupTempFile } from "../utils/temp-file.js";
 import {
   invokeWithSlot,
@@ -28,7 +28,7 @@ import {
   getThumbnailDataUri,
   buildSendParams,
   buildDocumentFallbackParams,
-  ensureChannelLoaded,
+  ensureChatLoaded,
   parseFloodWait,
   type ProgressSession,
 } from "../utils/upload-helpers.js";
@@ -57,6 +57,10 @@ interface UploadSession {
   telegramProgress: number;      // 0–1 fraction of Telegram upload
   createdAt: number;
   dir: string;
+  /** Storage routing: 'bot' (guest/legacy) or 'user' (personal Telegram). */
+  storageType: string;
+  /** Supabase user ID — needed to resolve user TDLib session on /complete. */
+  userId: string | null;
   /** Persistent write stream — stays open entire session, prevents EBUSY on Windows */
   writeStream: fs.WriteStream;
   /** Serialises all writes to the assembled file — prevents EBUSY on Windows */
@@ -117,7 +121,7 @@ const router = Router();
 // POST /api/chunked-upload/init
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/init", (req: Request, res: Response) => {
-  const { fileName, fileSize, mimeType, totalChunks } = req.body;
+  const { fileName, fileSize, mimeType, totalChunks, storageType, userId } = req.body;
 
   if (!fileName || !fileSize || !totalChunks) {
     res.status(400).json({ error: "Missing required fields: fileName, fileSize, totalChunks" });
@@ -160,6 +164,8 @@ router.post("/init", (req: Request, res: Response) => {
     telegramProgress: 0,
     createdAt: Date.now(),
     dir,
+    storageType: storageType || "bot",
+    userId: userId || null,
     writeStream,
     flushLock: Promise.resolve(),
   };
@@ -350,25 +356,20 @@ router.post("/complete", async (req: Request, res: Response) => {
     }
 
     // ── Upload to Telegram (using shared helpers) ────────────────────────
-    const client = await getTDLibClient();
-    const channelId = process.env.TELEGRAM_CHANNEL_ID;
-
-    if (!channelId) {
-      cleanupTempFile(assembledPath);
-      sessions.delete(uploadId);
-      res.status(500).json({ error: "TELEGRAM_CHANNEL_ID not configured" });
-      return;
-    }
+    const { client, chatId } = await sessionManager.resolveClientAndChat(
+      session.storageType,
+      session.userId || undefined,
+    );
 
     const mimeType = session.mimeType;
     const fileName = session.fileName;
 
-    const sendParams = buildSendParams(channelId, assembledPath, fileName, mimeType);
-    const documentFallbackParams = buildDocumentFallbackParams(channelId, assembledPath, fileName);
+    const sendParams = buildSendParams(chatId, assembledPath, fileName, mimeType);
+    const documentFallbackParams = buildDocumentFallbackParams(chatId, assembledPath, fileName);
 
-    // Ensure channel is loaded
+    // Ensure chat is loaded
     try {
-      await ensureChannelLoaded(client, channelId);
+      await ensureChatLoaded(client, chatId);
     } catch (chErr) {
       cleanupTempFile(assembledPath);
       sessions.delete(uploadId);
@@ -415,6 +416,8 @@ router.post("/complete", async (req: Request, res: Response) => {
       message_id: sentMessage.id,
       thumbnail_data: null, // Will be fetched by frontend if needed
       file_size: fileInfo.size,
+      chat_id: chatId,
+      storage_type: session.storageType,
     });
 
     // Cleanup in background (don't block response)

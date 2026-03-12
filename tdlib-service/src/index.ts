@@ -9,13 +9,14 @@ config({ path: join(__dirname, "..", ".env") });
 import express from "express";
 import { authMiddleware } from "./middleware/auth.js";
 import { signedUrlAuth } from "./middleware/signed-url-auth.js";
-import { getTDLibClient, closeTDLibClient, isClientReady } from "./tdlib-client.js";
+import { sessionManager } from "./session-manager.js";
 import { cleanupOldTempFiles } from "./utils/temp-file.js";
 import uploadRouter from "./routes/upload.js";
 import chunkedUploadRouter from "./routes/chunked-upload.js";
 import downloadRouter, { logDiskStats } from "./routes/download.js";
 import thumbnailRouter from "./routes/thumbnail.js";
 import deleteRouter from "./routes/delete.js";
+import telegramAuthRouter from "./routes/telegram-auth.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -42,9 +43,12 @@ app.use((req, res, next) => {
 
 // Health check (no auth required)
 app.get("/health", (_req, res) => {
+  const stats = sessionManager.getStats();
   res.json({
     status: "ok",
-    tdlib_ready: isClientReady(),
+    tdlib_ready: stats.botReady,
+    active_sessions: stats.activeSessions,
+    max_sessions: stats.maxSessions,
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
@@ -71,6 +75,7 @@ app.use("/api/upload", authMiddleware, uploadRouter);
 app.use("/api/download", authMiddleware, downloadRouter);
 app.use("/api/thumbnail", authMiddleware, thumbnailRouter);
 app.use("/api/message", authMiddleware, deleteRouter);
+app.use("/api/telegram", authMiddleware, telegramAuthRouter);
 
 // ─── Public signed-URL download route ────────────────────────────────
 // Browser fetches files directly via signed short-lived tokens.
@@ -117,13 +122,13 @@ async function start() {
   console.log("╚══════════════════════════════════════════╝");
   console.log("");
 
-  // Initialize TDLib client
-  console.log("[Startup] Initializing TDLib client...");
+  // Initialize TDLib session manager (bot session)
+  console.log("[Startup] Initializing session manager...");
   try {
-    await getTDLibClient();
-    console.log("[Startup] TDLib client ready");
+    await sessionManager.initBot();
+    console.log("[Startup] Session manager ready (bot session active)");
   } catch (err) {
-    console.error("[Startup] Failed to initialize TDLib:", err);
+    console.error("[Startup] Failed to initialize session manager:", err);
     process.exit(1);
   }
 
@@ -142,7 +147,7 @@ async function start() {
   // Runs once at startup (after 60 s delay) then every 6 hours.
   const runOptimizeStorage = async () => {
     try {
-      const client = await getTDLibClient();
+      const client = sessionManager.getBotClient();
       // Keep only files accessed in the last 6 hours; cap total at 8 GB.
       // Thumbnails are excluded (small, useful for quick preview).
       const result = await client.invoke({
@@ -196,6 +201,11 @@ async function start() {
     console.log(`  POST   /api/thumbnail/from-message`);
     console.log(`  DELETE /api/message/:chatId/:messageId`);
     console.log(`  POST   /api/message/cleanup`);
+    console.log(`  POST   /api/telegram/send-code`);
+    console.log(`  POST   /api/telegram/verify-code`);
+    console.log(`  POST   /api/telegram/verify-password`);
+    console.log(`  GET    /api/telegram/status/:userId`);
+    console.log(`  POST   /api/telegram/disconnect`);
     console.log("");
   });
 }
@@ -203,7 +213,7 @@ async function start() {
 // ─── Graceful Shutdown ───────────────────────────────────────────────
 async function shutdown(signal: string) {
   console.log(`\n[Shutdown] Received ${signal}, shutting down...`);
-  await closeTDLibClient();
+  await sessionManager.shutdown();
   process.exit(0);
 }
 
