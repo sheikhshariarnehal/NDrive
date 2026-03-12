@@ -69,7 +69,7 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     // Resolve the TDLib client + target chat based on storage type
     const storageType = (req.body.storage_type as string) || "bot";
     const userId = req.body.user_id as string | undefined;
-    const { client, chatId } = await sessionManager.resolveClientAndChat(storageType, userId);
+    const { client, chatId, actualStorageType } = await sessionManager.resolveClientAndChat(storageType, userId);
 
     const mimeType =
       (req.body.mime_type as string) ||
@@ -139,7 +139,7 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       thumbnail_data: null, // Will be fetched by frontend if needed
       file_size: fileInfo.size,
       chat_id: chatId,
-      storage_type: storageType,
+      storage_type: actualStorageType,
     });
 
     // Clean up in background (don't block response)

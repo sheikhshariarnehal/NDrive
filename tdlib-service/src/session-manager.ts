@@ -768,23 +768,30 @@ class SessionManager {
     storageType: string,
     userId?: string,
     telegramChatId?: number | null,
-  ): Promise<{ client: TDLibClient; chatId: number }> {
+  ): Promise<{ client: TDLibClient; chatId: number; actualStorageType: string }> {
     if (storageType === "user" && userId) {
-      const session = await this.getSession(userId);
-      const chatId = telegramChatId || session.savedMessagesChatId;
-      if (!chatId) {
-        throw new Error("Could not resolve Saved Messages chat ID");
+      try {
+        const session = await this.getSession(userId);
+        const chatId = telegramChatId || session.savedMessagesChatId;
+        if (!chatId) {
+          throw new Error("Could not resolve Saved Messages chat ID");
+        }
+        return { client: session.client, chatId, actualStorageType: "user" };
+      } catch (err) {
+        console.warn(
+          `[SessionManager] User ${userId} session unavailable (${err instanceof Error ? err.message : err}), falling back to bot channel`,
+        );
+        // fall through to bot
       }
-      return { client: session.client, chatId };
     }
 
     // Default: bot session
     const client = this.getBotClient();
-    const chatId = telegramChatId || parseInt(process.env.TELEGRAM_CHANNEL_ID || "0", 10);
+    const chatId = parseInt(process.env.TELEGRAM_CHANNEL_ID || "0", 10);
     if (!chatId) {
       throw new Error("TELEGRAM_CHANNEL_ID not configured");
     }
-    return { client, chatId };
+    return { client, chatId, actualStorageType: "bot" };
   }
 
   // ── Shutdown ─────────────────────────────────────────────────────────────
