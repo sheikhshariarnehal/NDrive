@@ -37,11 +37,11 @@ export default function RootLayout({
       >
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var v=localStorage.getItem('viewMode');if(v==='grid')document.documentElement.setAttribute('data-view-mode','grid')}catch(e){}`,
+            __html: `try{var v=localStorage.getItem('viewMode');var m=window.matchMedia('(max-width: 767px)').matches;var mode=m?'grid':(v==='grid'?'grid':'list');document.documentElement.setAttribute('data-view-mode',mode)}catch(e){}`,
           }}
         />
         {/* Skeleton toggle CSS — inlined so it's available before any stylesheet loads */}
-        <style dangerouslySetInnerHTML={{ __html: `.skeleton-grid{display:none}.skeleton-list{display:block}html[data-view-mode="grid"] .skeleton-grid{display:block}html[data-view-mode="grid"] .skeleton-list{display:none}` }} />
+        <style dangerouslySetInnerHTML={{ __html: `.skeleton-grid{display:none}.skeleton-list{display:block}html[data-view-mode="grid"] .skeleton-grid{display:block}html[data-view-mode="grid"] .skeleton-list{display:none}html[data-view-mode="list"] .skeleton-grid{display:none}html[data-view-mode="list"] .skeleton-list{display:block}@media (max-width:767px){html .skeleton-grid{display:block!important}html .skeleton-list{display:none!important}}` }} />
         <AuthProvider>
           <TooltipProvider>
             {children}

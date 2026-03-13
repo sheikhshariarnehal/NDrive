@@ -35,7 +35,6 @@ export default function DashboardLayout({
 }) {
   const { user, guestSessionId, isLoading: authLoading, isTelegramConnected, isTelegramStatusLoading } = useAuth();
   const isGuest = !user && !!guestSessionId;
-  const [isDesktop, setIsDesktop] = useState(false);
   const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("telegram-banner-dismissed") === "true";
@@ -126,14 +125,6 @@ export default function DashboardLayout({
     };
   }, [setIsOnline]);
 
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsDesktop(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (sidebarOpen) {
@@ -147,23 +138,23 @@ export default function DashboardLayout({
   return (
     <UploadZone folderId={currentFolderId}>
       <div className="flex h-dvh bg-background text-foreground overflow-hidden">
-        {isDesktop ? (
-          <aside className="w-[240px] flex-shrink-0">
-            <Sidebar />
-          </aside>
-        ) : (
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent
-              side="left"
-              className="p-0 w-[240px]"
-              showCloseButton={false}
-              onOpenAutoFocus={(event) => event.preventDefault()}
-            >
-              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-              {sidebarOpen ? <Sidebar /> : null}
-            </SheetContent>
-          </Sheet>
-        )}
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:flex w-[240px] flex-shrink-0">
+          <Sidebar />
+        </aside>
+
+        {/* Mobile / Tablet Sidebar */}
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent
+            side="left"
+            className="p-0 w-[240px] lg:hidden"
+            showCloseButton={false}
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
+            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+            {sidebarOpen ? <Sidebar /> : null}
+          </SheetContent>
+        </Sheet>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0">

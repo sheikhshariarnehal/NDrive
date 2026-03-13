@@ -48,17 +48,47 @@ const StorageMeter = dynamic(
   { ssr: false }
 );
 
+function SidebarLoadingSkeleton() {
+  return (
+    <>
+      <div className="px-4 py-2 shrink-0 mt-1">
+        <div className="h-12 w-28 rounded-2xl border border-[#dadce0] bg-white animate-pulse" />
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 mt-2" style={{ contain: "layout style" }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={`nav-${i}`} className="h-10 rounded-full bg-[#e8eaed] animate-pulse" />
+        ))}
+
+        <div className="px-1 mt-4 space-y-2">
+          <div className="h-3 w-24 rounded bg-[#e8eaed] animate-pulse" />
+          <div className="h-8 rounded-full bg-[#f1f3f4] animate-pulse" />
+          <div className="h-8 rounded-full bg-[#f1f3f4] animate-pulse" />
+          <div className="h-8 rounded-full bg-[#f1f3f4] animate-pulse" />
+        </div>
+      </nav>
+
+      <div className="px-4 pb-3">
+        <div className="h-20 rounded-xl bg-[#f1f3f4] animate-pulse" />
+      </div>
+    </>
+  );
+}
+
 export function Sidebar() {
   const [secondaryReady, setSecondaryReady] = useState(false);
   const pathname = usePathname();
-  const { user, isGuest, isLoading } = useAuth();
+  const { user, isGuest, isLoading: authLoading } = useAuth();
   // Use granular selectors so Sidebar only re-renders when these specific values change.
   const folders = useFilesStore((s) => s.folders);
+  const filesLoading = useFilesStore((s) => s.isLoading);
+  const dataLoaded = useFilesStore((s) => s.dataLoaded);
   const openFilePicker = useUIStore((s) => s.openFilePicker);
   const openFolderPicker = useUIStore((s) => s.openFolderPicker);
   const setNewFolderModalOpen = useUIStore((s) => s.setNewFolderModalOpen);
   const uploadFiles = useUIStore((s) => s.uploadFiles);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const showLoadingSkeleton = authLoading || filesLoading || !dataLoaded;
 
   // Memoize the root-level folder list to avoid a new array reference on every render.
   const rootFolders = useMemo(() => folders.filter((f) => !f.parent_id), [folders]);
@@ -106,109 +136,115 @@ export function Sidebar() {
         </span>
       </div>
 
-      {/* + New Button */}
-      <div className="px-4 py-2 shrink-0 mt-1">
-        <input
-          ref={folderInputRef}
-          type="file"
-          // @ts-ignore
-          webkitdirectory=""
-          multiple
-          className="hidden"
-          onChange={handleFolderUpload}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-fit h-12 px-6 rounded-2xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] text-[#202124] font-medium text-sm gap-2.5 transition-all"
-            >
-              <Plus className="h-5 w-5" />
-              <span>New</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-[360px] p-0 rounded-[12px] border border-[#dadce0] bg-white text-[#202124] shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] overflow-hidden"
-          >
-            <DropdownMenuItem
-              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
-              onClick={() => setNewFolderModalOpen(true)}
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <FolderPlus className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
-                <span className="text-base leading-none">New folder</span>
-              </div>
-              <span className="text-sm text-[#5f6368]">Alt+C then F</span>
-            </DropdownMenuItem>
+      {showLoadingSkeleton ? (
+        <SidebarLoadingSkeleton />
+      ) : (
+        <>
+          {/* + New Button */}
+          <div className="px-4 py-2 shrink-0 mt-1">
+            <input
+              ref={folderInputRef}
+              type="file"
+              // @ts-ignore
+              webkitdirectory=""
+              multiple
+              className="hidden"
+              onChange={handleFolderUpload}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-fit h-12 px-6 rounded-2xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] text-[#202124] font-medium text-sm gap-2.5 transition-all"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span>New</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-[360px] p-0 rounded-[12px] border border-[#dadce0] bg-white text-[#202124] shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] overflow-hidden"
+              >
+                <DropdownMenuItem
+                  className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
+                  onClick={() => setNewFolderModalOpen(true)}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <FolderPlus className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                    <span className="text-base leading-none">New folder</span>
+                  </div>
+                  <span className="text-sm text-[#5f6368]">Alt+C then F</span>
+                </DropdownMenuItem>
 
-            <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
+                <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
 
-            <DropdownMenuItem
-              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
-              onClick={() => openFilePicker?.()}
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <Upload className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
-                <span className="text-base leading-none">File upload</span>
-              </div>
-              <span className="text-sm text-[#5f6368]">Alt+C then U</span>
-            </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
+                  onClick={() => openFilePicker?.()}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <Upload className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                    <span className="text-base leading-none">File upload</span>
+                  </div>
+                  <span className="text-sm text-[#5f6368]">Alt+C then U</span>
+                </DropdownMenuItem>
 
-            <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
+                <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
 
-            <DropdownMenuItem
-              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
-              onClick={() => openFolderPicker?.() || folderInputRef.current?.click()}
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <FolderUp className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
-                <span className="text-base leading-none">Folder upload</span>
-              </div>
-              <span className="text-sm text-[#5f6368]">Alt+C then I</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                <DropdownMenuItem
+                  className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
+                  onClick={() => openFolderPicker?.() || folderInputRef.current?.click()}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <FolderUp className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                    <span className="text-base leading-none">Folder upload</span>
+                  </div>
+                  <span className="text-sm text-[#5f6368]">Alt+C then I</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-      {/* Navigation — overflow-y-auto with GPU-composited scroll */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 mt-2" style={{ contain: "layout style" }}>
-        {navItems.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            isActive={pathname === item.href}
-            badge={item.badge}
-          />
-        ))}
+          {/* Navigation — overflow-y-auto with GPU-composited scroll */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 mt-2" style={{ contain: "layout style" }}>
+            {navItems.map((item) => (
+              <NavItem
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                isActive={pathname === item.href}
+                badge={item.badge}
+              />
+            ))}
 
-        {/* Folder Tree */}
-        <div className="px-1 mt-4">
-          {secondaryReady ? (
-            <FolderTree folders={rootFolders} childrenByParent={childrenByParent} />
-          ) : (
-            <p className="text-xs text-muted-foreground px-2 py-1">Loading folders...</p>
+            {/* Folder Tree */}
+            <div className="px-1 mt-4">
+              {secondaryReady ? (
+                <FolderTree folders={rootFolders} childrenByParent={childrenByParent} />
+              ) : (
+                <p className="text-xs text-muted-foreground px-2 py-1">Loading folders...</p>
+              )}
+            </div>
+          </nav>
+
+          {/* Storage Meter */}
+          <div className="px-4 pb-3">
+            {secondaryReady ? <StorageMeter /> : null}
+          </div>
+
+          {/* Upgrade / Sign Up Button */}
+          {!authLoading && (isGuest || !user) && (
+            <div className="px-4 pb-4">
+              <Link href="/auth/signup">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all h-10 text-sm font-medium rounded-full">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Sign Up for Full Access
+                </Button>
+              </Link>
+            </div>
           )}
-        </div>
-      </nav>
-
-      {/* Storage Meter */}
-      <div className="px-4 pb-3">
-        {secondaryReady ? <StorageMeter /> : null}
-      </div>
-
-      {/* Upgrade / Sign Up Button */}
-      {!isLoading && (isGuest || !user) && (
-        <div className="px-4 pb-4">
-          <Link href="/auth/signup">
-            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all h-10 text-sm font-medium rounded-full">
-              <Crown className="h-4 w-4 mr-2" />
-              Sign Up for Full Access
-            </Button>
-          </Link>
-        </div>
+        </>
       )}
     </div>
   );

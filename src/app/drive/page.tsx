@@ -90,8 +90,15 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col">
         {/* Skeleton sticky header */}
-        <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-background -mx-2.5 px-2.5 sm:-mx-4 sm:px-4">
-          <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+        <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-surface-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5">
+          <div className="h-5 sm:h-6 w-24 sm:w-36 rounded bg-[#e8eaed] animate-pulse" />
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 p-0.5 rounded-full border border-[#dadce0] bg-[#f8f9fa]">
+              <div className="h-8 w-8 rounded-full bg-[#e8eaed] animate-pulse" />
+              <div className="h-8 w-8 rounded-full bg-[#e8eaed] animate-pulse" />
+            </div>
+            <div className="h-8 w-8 rounded-full bg-[#e8eaed] animate-pulse" />
+          </div>
         </div>
         <div className="skeleton-grid"><GridViewSkeleton /></div>
         <div className="skeleton-list"><ListViewSkeleton /></div>
