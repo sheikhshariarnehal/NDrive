@@ -132,7 +132,7 @@ export default function DashboardLayout({
 
   return (
     <UploadZone folderId={currentFolderId}>
-      <div className="flex h-dvh bg-[#f8fafd] overflow-hidden">
+      <div className="flex h-dvh bg-background text-foreground overflow-hidden">
         {/* Desktop Sidebar — fixed, full height */}
         <aside className="hidden lg:flex w-[240px] flex-shrink-0">
           <Sidebar />
@@ -150,24 +150,24 @@ export default function DashboardLayout({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Offline Banner */}
           {!isOnline && (
-            <div className="bg-amber-500 text-white text-center py-2 text-sm font-medium tracking-wide shadow-sm">
+            <div className="bg-accent text-accent-foreground text-center py-2 text-sm font-medium tracking-wide border-b border-border shadow-sm">
               You are offline — changes will sync when you reconnect.
             </div>
           )}
 
           {/* Telegram Connect Banner */}
           {user && !isGuest && !isTelegramConnected && !telegramBannerDismissed && (
-            <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5 flex items-center justify-between gap-3">
+            <div className="bg-muted border-b border-border px-4 py-2.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <Send className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                <p className="text-sm text-blue-800 truncate">
+                <Send className="h-4 w-4 text-foreground flex-shrink-0" />
+                <p className="text-sm text-foreground truncate">
                   Connect your Telegram for <span className="font-medium">unlimited personal storage</span>
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => useUIStore.getState().setConnectTelegramModalOpen(true)}
-                  className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors"
+                  className="text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 px-3 py-1 rounded-md transition-colors"
                 >
                   Connect
                 </button>
@@ -176,7 +176,7 @@ export default function DashboardLayout({
                     setTelegramBannerDismissed(true);
                     localStorage.setItem("telegram-banner-dismissed", "true");
                   }}
-                  className="text-blue-400 hover:text-blue-600 transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Dismiss"
                 >
                   <X className="h-4 w-4" />
@@ -187,8 +187,11 @@ export default function DashboardLayout({
 
           <TopBar />
 
-          <main className="flex-1 overflow-hidden px-1 pb-1 sm:px-2 sm:pb-2">
-            <div className="bg-white rounded-xl sm:rounded-2xl h-full shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <main className="flex-1 overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
+            <div 
+              style={{ "--radius": "0.625rem" } as React.CSSProperties}
+              className="bg-surface-white text-card-foreground rounded-[calc(var(--radius)+0.5rem)] sm:rounded-[calc(var(--radius)+0.75rem)] h-full border border-transparent overflow-hidden flex flex-col"
+            >
               <div className="flex-1 overflow-y-auto w-full px-2.5 sm:px-4 lg:px-5 pb-20 sm:pb-4">
                 {children}
               </div>

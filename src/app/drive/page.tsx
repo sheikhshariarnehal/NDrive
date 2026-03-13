@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutGrid, List, Upload } from "lucide-react";
+import { LayoutGrid, List, Info, ChevronDown } from "lucide-react";
 import type { DbFile } from "@/types/file.types";
 import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 import { GridViewSkeleton } from "@/components/skeletons/grid-view-skeleton";
@@ -90,8 +90,8 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col">
         {/* Skeleton sticky header */}
-        <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4">
-          <div className="h-5 w-24 bg-[#f1f3f4] rounded animate-pulse" />
+        <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-background -mx-2.5 px-2.5 sm:-mx-4 sm:px-4">
+          <div className="h-5 w-24 bg-muted rounded animate-pulse" />
         </div>
         <div className="skeleton-grid"><GridViewSkeleton /></div>
         <div className="skeleton-list"><ListViewSkeleton /></div>
@@ -102,33 +102,20 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col">
       {/* Google Drive-style compact sticky header */}
-      <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5">
-        <h1 className="text-[17px] sm:text-[22px] font-normal text-[#202124] flex-1 min-w-0 truncate">My Drive</h1>
+      <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-surface-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5">
+        <h1 className="text-[17px] sm:text-[22px] font-normal text-[#202124] flex-1 min-w-0 truncate flex items-center gap-1.5">My Drive <ChevronDown className="h-4 w-4 text-[#5f6368]" /></h1>
         <TooltipProvider>
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full border border-[#9aa0a6] bg-[#f8f9fa]">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hidden sm:flex h-9 w-9 rounded-full text-[#444746] hover:bg-[#f1f3f4]"
-                  onClick={() => openFilePicker?.()}
-                >
-                  <Upload className="h-[18px] w-[18px]" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Upload file</p></TooltipContent>
-            </Tooltip>
-            <div className="hidden sm:flex items-center gap-0.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-9 w-9 rounded-full ${
+                  className={`h-8 w-8 rounded-full ${
                     viewMode === "list"
-                      ? "bg-[#c2e7ff] text-[#001d35] hover:bg-[#c2e7ff]"
-                      : "text-[#444746] hover:bg-[#f1f3f4]"
+                      ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
+                      : "text-[#5f6368] hover:bg-[#f1f3f4]"
                   }`}
                   onClick={() => setViewMode("list")}
                 >
@@ -142,10 +129,10 @@ export default function DashboardPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-9 w-9 rounded-full ${
+                  className={`h-8 w-8 rounded-full ${
                     viewMode === "grid"
-                      ? "bg-[#c2e7ff] text-[#001d35] hover:bg-[#c2e7ff]"
-                      : "text-[#444746] hover:bg-[#f1f3f4]"
+                      ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
+                      : "text-[#5f6368] hover:bg-[#f1f3f4]"
                   }`}
                   onClick={() => setViewMode("grid")}
                 >
@@ -155,6 +142,9 @@ export default function DashboardPage() {
               <TooltipContent><p>Grid view</p></TooltipContent>
             </Tooltip>
             </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-[#5f6368] hover:bg-[#f1f3f4]">
+              <Info className="h-4 w-4" />
+            </Button>
           </div>
         </TooltipProvider>
       </div>
@@ -170,7 +160,7 @@ export default function DashboardPage() {
       {/* Suggested from your activity */}
       {!searchQuery && files.length > 0 && effectiveViewMode !== "list" && (
         <section className="hidden sm:block">
-          <h2 className="text-xs sm:text-sm font-medium text-[#202124] mb-2 sm:mb-3">
+          <h2 className="text-xs sm:text-sm font-medium text-foreground mb-2 sm:mb-3">
             Suggested
           </h2>
           <SuggestedFiles files={recentFiles.slice(0, 6)} />

@@ -60,7 +60,7 @@ export function StorageMeter() {
       <button
         type='button'
         onClick={() => setIsOpen(true)}
-        className='group w-full text-left rounded-xl px-3 py-3 hover:bg-gray-100/80 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-200'
+        className='group w-full text-left rounded-xl px-3 py-3 bg-surface-white hover:bg-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border'
       >
         {/* Header */}
         <div className='flex items-center justify-between mb-2.5'>
@@ -124,22 +124,23 @@ export function StorageMeter() {
             'top-auto bottom-0 left-0 right-0',
             'translate-x-0 translate-y-0',
             'w-full max-w-full',
-            'rounded-t-2xl rounded-b-none',
+            'rounded-t-[calc(var(--radius)+0.75rem)] rounded-b-none',
             'max-h-[90svh] flex flex-col',
-            'border-t border-x border-gray-100/80 shadow-2xl',
+            'border-t border-border shadow-2xl',
             // Mobile slide animation
             'data-[state=open]:slide-in-from-bottom-6',
             'data-[state=closed]:slide-out-to-bottom-6',
             // ── Desktop: centered modal ──
             'sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:right-auto',
             'sm:-translate-x-1/2 sm:-translate-y-1/2',
-            'sm:max-w-sm sm:w-full',
-            'sm:rounded-2xl',
-            'sm:max-h-[90svh]',
-            'sm:border',
+            'sm:max-w-md sm:w-full',
+            'sm:rounded-[calc(var(--radius)+0.75rem)]',
+            'sm:max-h-[85svh]',
+            'sm:border sm:border-border',
             // Desktop zoom animation (override slide)
             'sm:data-[state=open]:slide-in-from-bottom-0',
             'sm:data-[state=closed]:slide-out-to-bottom-0',
+            'bg-surface-white'
           ].join(' ')}
         >
           {/* Drag handle — visible only on mobile */}
@@ -148,10 +149,10 @@ export function StorageMeter() {
           </div>
 
           {/* Header — donut gauge */}
-          <div className='flex flex-col items-center px-6 pt-4 pb-5 bg-gradient-to-b from-gray-50/80 to-white border-b border-gray-100 flex-shrink-0 sm:pt-6'>
+          <div className='flex flex-col items-center px-6 pt-4 pb-5 bg-surface-white border-b border-border flex-shrink-0 sm:pt-6 rounded-t-[calc(var(--radius)+0.75rem)]'>
             <DialogHeader className='mb-4 text-center'>
-              <DialogTitle className='text-[14px] font-semibold text-gray-700 tracking-tight flex items-center justify-center gap-2'>
-                <Layers className='w-3.5 h-3.5 text-gray-400' />
+              <DialogTitle className='text-[14px] font-semibold text-foreground tracking-tight flex items-center justify-center gap-2'>
+                <Layers className='w-3.5 h-3.5 text-muted-foreground' />
                 Storage Breakdown
               </DialogTitle>
             </DialogHeader>
@@ -179,22 +180,22 @@ export function StorageMeter() {
                 />
               </svg>
               <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                <span className='text-2xl sm:text-xl font-bold text-gray-900 tabular-nums leading-none'>
+                <span className='text-2xl sm:text-xl font-bold text-foreground tabular-nums leading-none'>
                   {usedPercent.toFixed(0)}
-                  <span className='text-base sm:text-sm font-semibold text-gray-400'>%</span>
+                  <span className='text-base sm:text-sm font-semibold text-muted-foreground'>%</span>
                 </span>
-                <span className='text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5'>
+                <span className='text-[9px] font-semibold text-muted-foreground uppercase tracking-widest mt-0.5'>
                   used
                 </span>
               </div>
             </div>
 
             {/* Used / Total pill */}
-            <div className='mt-3 flex items-baseline gap-1 px-3 py-1.5 rounded-full bg-gray-100/80'>
-              <span className='text-[13px] sm:text-[12px] font-bold text-gray-800 tabular-nums'>
+            <div className='mt-3 flex items-baseline gap-1 px-3 py-1.5 rounded-full bg-accent'>
+              <span className='text-[13px] sm:text-[12px] font-bold text-foreground tabular-nums'>
                 {formatFileSize(breakdown.total)}
               </span>
-              <span className='text-[11px] sm:text-[10px] text-gray-400 font-medium'>
+              <span className='text-[11px] sm:text-[10px] text-muted-foreground font-medium'>
                 of {formatFileSize(storageLimit)}
               </span>
             </div>
@@ -218,7 +219,7 @@ export function StorageMeter() {
                 return (
                   <div
                     key={item.key}
-                    className='flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors'
+                    className='flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg hover:bg-accent active:bg-accent/80 transition-colors'
                   >
                     {/* Color dot */}
                     <span
@@ -226,17 +227,17 @@ export function StorageMeter() {
                       style={{ backgroundColor: item.color }}
                     />
                     {/* Icon */}
-                    <Icon className='w-4 h-4 sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0' strokeWidth={1.75} />
+                    <Icon className='w-4 h-4 sm:w-3.5 sm:h-3.5 text-muted-foreground flex-shrink-0' strokeWidth={1.75} />
                     {/* Label */}
-                    <span className='flex-1 text-[13px] sm:text-[12px] font-medium text-gray-600'>
+                    <span className='flex-1 text-[13px] sm:text-[12px] font-medium text-foreground'>
                       {item.label}
                     </span>
                     {/* Percent */}
-                    <span className='text-[12px] sm:text-[11px] text-gray-400 tabular-nums w-10 text-right'>
+                    <span className='text-[12px] sm:text-[11px] text-muted-foreground tabular-nums w-10 text-right'>
                       {item.pct.toFixed(1)}%
                     </span>
                     {/* Size */}
-                    <span className='text-[13px] sm:text-[12px] font-semibold text-gray-800 tabular-nums w-16 text-right'>
+                    <span className='text-[13px] sm:text-[12px] font-semibold text-foreground tabular-nums w-16 text-right'>
                       {formatFileSize(item.size)}
                     </span>
                   </div>
@@ -246,7 +247,7 @@ export function StorageMeter() {
 
             {/* Segmented mini bar */}
             <div className='px-4 pb-4 pt-1 flex-shrink-0'>
-              <div className='relative h-1 w-full bg-gray-100 rounded-full overflow-hidden'>
+              <div className='relative h-1 w-full bg-secondary rounded-full overflow-hidden'>
                 {segments.map((seg) => (
                   <div
                     key={seg.key}

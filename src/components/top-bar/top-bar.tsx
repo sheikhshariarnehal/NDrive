@@ -17,35 +17,36 @@ export function TopBar() {
   const isAuthenticated = !isGuest && !!user;
 
   return (
-    <header className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 h-14 sm:h-16 bg-[#f8fafd] shrink-0 sticky top-0 z-40">
+    <header className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 h-14 sm:h-16 bg-background text-foreground shrink-0 sticky top-0 z-40">
       {/* Mobile hamburger — hidden on desktop */}
       <Button
         variant="ghost"
         size="icon"
-        className="flex-shrink-0 lg:hidden h-9 w-9 text-gray-600 hover:text-gray-900 hover:bg-gray-200/70 rounded-full"
+        className="flex-shrink-0 lg:hidden h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full"
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Search — grows to fill available space, centered within it */}
-      <div className="flex-1 min-w-0 flex items-center justify-center">
+      {/* Search — grows to fill available space, aligned to the start */}
+      <div className="flex-1 min-w-0 flex items-center justify-start">
         <SearchBar />
       </div>
 
       {/* Right actions */}
       <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-        {/* Mobile upload shortcut */}
+        {/* Upload action (desktop/tablet only) */}
         {isAuthenticated && (
           <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden h-9 w-9 text-gray-600 hover:text-gray-900 hover:bg-gray-200/70 rounded-full"
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex h-9 px-4 rounded-full border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f8f9fa] hover:border-[#dadce0] shadow-none"
             onClick={() => openFilePicker?.()}
             aria-label="Upload file"
           >
-            <Upload className="h-4.5 w-4.5" />
+            <Upload className="h-4 w-4" />
+            Upload
           </Button>
         )}
 
@@ -54,7 +55,7 @@ export function TopBar() {
 
         {/* Auth state */}
         {isLoading ? (
-          <div className="h-9 w-9 rounded-full bg-gray-200 animate-pulse" />
+          <div className="h-9 w-9 rounded-full bg-muted/80 animate-pulse" />
         ) : isAuthenticated ? (
           <UserMenu />
         ) : (
@@ -62,14 +63,14 @@ export function TopBar() {
             <Button
               variant="outline"
               size="sm"
-              className="hidden sm:flex h-9 px-5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-full shadow-none transition-colors"
+              className="hidden sm:flex h-9 px-5 text-sm font-medium border-border hover:bg-accent rounded-full shadow-none transition-colors"
               onClick={() => router.push("/auth/login")}
             >
               Login
             </Button>
             <Button
               size="sm"
-              className="h-9 px-5 text-sm font-medium bg-[#1a73e8] hover:bg-[#1558b0] text-white border-0 rounded-full shadow-none transition-colors"
+              className="h-9 px-5 text-sm font-medium rounded-full shadow-none transition-colors"
               onClick={() => router.push("/auth/signup")}
             >
               Sign up

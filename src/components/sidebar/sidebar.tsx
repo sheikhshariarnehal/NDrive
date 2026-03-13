@@ -35,11 +35,11 @@ import {
 } from "lucide-react";
 
 const navItems: Array<{ href: string; label: string; icon: LucideIcon; badge?: string }> = [
-  { href: "/drive", label: "All Files", icon: FolderOpen },
+  { href: "/drive", label: "My Drive", icon: FolderOpen },
   { href: "/drive/recent", label: "Recent", icon: Image },
   { href: "/drive/starred", label: "Starred", icon: Star },
-  { href: "/drive/shared", label: "Shared Files", icon: Users },
-  { href: "/drive/trash", label: "Trash", icon: Trash2 },
+  { href: "/drive/shared", label: "Shared with me", icon: Users },
+  { href: "/drive/trash", label: "Bin", icon: Trash2 },
   { href: "/drive/settings", label: "Settings", icon: Settings },
 ];
 
@@ -69,13 +69,13 @@ export function Sidebar() {
       <div className="flex items-center gap-2 px-4 h-14 shrink-0">
         <NextImage
           src="/logo.webp"
-          alt="CloudVault"
+          alt="NDrive"
           width={30}
           height={30}
           className="flex-shrink-0"
           priority
         />
-        <span className="text-[17px] font-normal tracking-tight text-gray-600">CloudVault</span>
+        <span className="text-[34px] leading-none font-normal tracking-tight text-[#3c4043]">Drive</span>
       </div>
 
       {/* + New Button */}
@@ -93,43 +93,51 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="w-fit h-10 px-4 rounded-2xl shadow-sm hover:shadow-md border-none bg-white text-gray-700 font-medium text-sm gap-2 transition-shadow"
+              className="w-fit h-12 px-6 rounded-2xl shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] border border-[#dadce0] bg-white hover:bg-[#f8f9fa] text-[#202124] font-medium text-sm gap-2.5 transition-all"
             >
               <Plus className="h-5 w-5" />
-              New
+              <span>New</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 py-1">
+          <DropdownMenuContent
+            align="start"
+            className="w-[360px] p-0 rounded-[12px] border border-[#dadce0] bg-white text-[#202124] shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] overflow-hidden"
+          >
             <DropdownMenuItem
-              className="gap-3 py-2.5 px-3 cursor-pointer"
+              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
               onClick={() => setNewFolderModalOpen(true)}
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100">
-                <FolderPlus className="h-4 w-4 text-gray-600" />
+              <div className="flex items-center gap-4 min-w-0">
+                <FolderPlus className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                <span className="text-base leading-none">New folder</span>
               </div>
-              <span className="text-sm">New folder</span>
+              <span className="text-sm text-[#5f6368]">Alt+C then F</span>
             </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
 
             <DropdownMenuItem
-              className="gap-3 py-2.5 px-3 cursor-pointer"
+              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
               onClick={() => openFilePicker?.()}
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100">
-                <Upload className="h-4 w-4 text-gray-600" />
+              <div className="flex items-center gap-4 min-w-0">
+                <Upload className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                <span className="text-base leading-none">File upload</span>
               </div>
-              <span className="text-sm">File upload</span>
+              <span className="text-sm text-[#5f6368]">Alt+C then U</span>
             </DropdownMenuItem>
 
+            <DropdownMenuSeparator className="my-0 bg-[#e0e3e7]" />
+
             <DropdownMenuItem
-              className="gap-3 py-2.5 px-3 cursor-pointer"
+              className="h-14 px-4 rounded-none flex items-center justify-between cursor-pointer focus:bg-[#f1f3f4]"
               onClick={() => openFolderPicker?.() || folderInputRef.current?.click()}
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100">
-                <FolderUp className="h-4 w-4 text-gray-600" />
+              <div className="flex items-center gap-4 min-w-0">
+                <FolderUp className="h-5 w-5 text-[#5f6368] flex-shrink-0" />
+                <span className="text-base leading-none">Folder upload</span>
               </div>
-              <span className="text-sm">Folder upload</span>
+              <span className="text-sm text-[#5f6368]">Alt+C then I</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -163,7 +171,7 @@ export function Sidebar() {
       {(isGuest || !user) && (
         <div className="px-4 pb-4">
           <Link href="/auth/signup">
-            <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg transition-all h-10 text-sm font-medium rounded-full">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all h-10 text-sm font-medium rounded-full">
               <Crown className="h-4 w-4 mr-2" />
               Sign Up for Full Access
             </Button>

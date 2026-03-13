@@ -17,7 +17,7 @@ export function FolderGrid({ folders }: FolderGridProps) {
       {folders.map((folder) => (
         <div
           key={folder.id}
-          className="group relative flex items-center gap-2 sm:gap-3 rounded-xl border border-[#dadce0] bg-white px-2.5 sm:px-3 py-2.5 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+          className="group relative flex items-center gap-2 sm:gap-3 rounded-xl border border-[#dadce0] bg-card px-2.5 sm:px-3 py-2.5 hover:shadow-md transition-shadow duration-200 cursor-pointer"
         >
           <Link
             href={`/drive/folder/${folder.id}`}

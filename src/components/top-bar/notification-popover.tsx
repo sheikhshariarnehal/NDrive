@@ -112,10 +112,10 @@ export function NotificationPopover() {
   };
 
   const iconMap = {
-    success: <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
-    error: <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />,
-    progress: <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />,
-    file: <FileIcon className="h-4 w-4 text-gray-400 shrink-0" />,
+    success: <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />,
+    error: <AlertCircle className="h-4 w-4 text-destructive shrink-0" />,
+    progress: <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />,
+    file: <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />,
   };
 
   return (
@@ -124,12 +124,12 @@ export function NotificationPopover() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-10 w-10 hover:bg-gray-100"
+          className="relative h-10 w-10 hover:bg-accent"
           aria-label="Notifications"
         >
           <Bell className="h-[19px] w-[19px]" />
           {showBadge && (
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background" />
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -138,10 +138,10 @@ export function NotificationPopover() {
         className="w-80 p-0 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {activeUploads > 0 && (
-            <span className="text-xs text-blue-600 font-medium">
+            <span className="text-xs text-primary font-medium">
               {activeUploads} uploading
             </span>
           )}
@@ -151,31 +151,31 @@ export function NotificationPopover() {
         <div className="max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 px-4">
-              <Bell className="h-10 w-10 text-gray-300 mb-3" />
-              <p className="text-sm text-gray-500 font-medium">No notifications yet</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <Bell className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground font-medium">No notifications yet</p>
+              <p className="text-xs text-muted-foreground/80 mt-1">
                 Upload files to see activity here
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-border/60">
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-accent/40 transition-colors"
                 >
                   <div className="mt-0.5">{iconMap[notif.icon]}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 font-medium truncate">
+                    <p className="text-sm text-foreground font-medium truncate">
                       {notif.title}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       {notif.description}
                     </p>
                     {notif.type === "upload-progress" && (
-                      <div className="mt-1.5 h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div className="mt-1.5 h-1 w-full bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                          className="h-full bg-primary rounded-full transition-all duration-300"
                           style={{
                             width: `${uploadQueue.find((u) => notif.id === `upload-${u.id}`)?.progress ?? 0}%`,
                           }}

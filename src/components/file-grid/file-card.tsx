@@ -116,7 +116,7 @@ export function FileCard({ file }: FileCardProps) {
   return (
     <div
       ref={cardRef}
-      className="group flex flex-col rounded-lg border border-[#dadce0] bg-white hover:border-[#174ea6] hover:shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)] transition-[box-shadow,border-color] duration-200 overflow-hidden cursor-pointer aspect-square"
+      className="group flex flex-col rounded-lg border border-[#dadce0] bg-card hover:border-[#174ea6] hover:shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)] transition-[box-shadow,border-color] duration-200 overflow-hidden cursor-pointer aspect-square"
     >
       {/* ===== TOP BAR: icon + name + ⋮ ===== */}
       <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-10 min-h-[32px] sm:min-h-[40px] max-h-[32px] sm:max-h-[40px] min-w-0 flex-shrink-0">

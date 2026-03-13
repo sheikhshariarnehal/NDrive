@@ -37,12 +37,12 @@ export function GoogleAuthButton({ mode = "login", className }: GoogleAuthButton
     <Button
       type="button"
       variant="outline"
-      className={`w-full h-11 flex items-center gap-3 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium ${className ?? ""}`}
+      className={`w-full h-11 flex items-center gap-3 border-border hover:bg-accent text-foreground transition-colors font-medium ${className ?? ""}`}
       onClick={handleGoogleAuth}
       disabled={loading}
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
       ) : (
         <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
           <path

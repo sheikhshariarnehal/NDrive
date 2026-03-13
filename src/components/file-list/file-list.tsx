@@ -54,13 +54,13 @@ function GDriveCheckbox({
       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(e); }}
       className={`w-[18px] h-[18px] rounded-sm border-2 flex items-center justify-center transition-colors duration-75 ${
         checked || indeterminate
-          ? "bg-[#1a73e8] border-[#1a73e8]"
-          : "border-[#80868b] hover:border-[#5f6368] bg-transparent"
+          ? "bg-primary border-primary"
+          : "border-muted-foreground hover:border-foreground bg-transparent"
       } ${className}`}
       data-no-preview
     >
-      {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-      {indeterminate && !checked && <Minus className="h-3 w-3 text-white" strokeWidth={3} />}
+      {checked && <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
+      {indeterminate && !checked && <Minus className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
     </button>
   );
 }
@@ -266,8 +266,8 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
 
   return (
     <div
-      className={`group relative flex items-center h-12 border-b border-[#e8eaed] cursor-pointer select-none transition-colors duration-75 ${
-        isSelected ? "bg-[#c2e7ff] hover:bg-[#b0d8f5]" : "hover:bg-[#f5f5f5]"
+      className={`group relative flex items-center h-12 border-b border-border cursor-pointer select-none transition-colors duration-75 ${
+        isSelected ? "bg-accent/80 hover:bg-accent" : "hover:bg-accent/40"
       }`}
       role="row"
       aria-selected={isSelected}
@@ -279,8 +279,8 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
           className={`h-5 w-5 flex-shrink-0 transition-opacity duration-75 ${
             isSelected ? "opacity-0" : "group-hover:opacity-0"
           }`}
-          style={{ color: folder.color || "#5f6368" }}
-          fill={folder.color || "#5f6368"}
+          style={{ color: folder.color || "var(--muted-foreground)" }}
+          fill={folder.color || "var(--muted-foreground)"}
           fillOpacity={0.22}
         />
         <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-75 ${
@@ -293,7 +293,7 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
       {/* Name */}
       <div className={`${COL.name} flex items-center gap-3 pr-3`}>
         <span className={`text-[14px] truncate leading-5 ${
-          isSelected ? "text-[#001d35] font-medium" : "text-[#202124]"
+          isSelected ? "text-foreground font-medium" : "text-foreground"
         }`}>
           {folder.name}
         </span>
@@ -307,14 +307,14 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
           className="w-6 h-6 rounded-full flex-shrink-0"
         />
         <span className={`ml-2 text-[14px] truncate ${
-          isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+          isSelected ? "text-foreground" : "text-muted-foreground"
         }`}>me</span>
       </div>
 
       {/* Date modified */}
       <div className={`hidden sm:flex items-center ${COL.date} flex-shrink-0 pr-3`}>
         <span className={`text-[14px] truncate ${
-          isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+          isSelected ? "text-foreground" : "text-muted-foreground"
         }`}>
           {formatGDriveDate(folder.updated_at)}
         </span>
@@ -323,7 +323,7 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
       {/* File size (dash for folders) */}
       <div className={`hidden lg:flex items-center ${COL.size} flex-shrink-0 pr-4`}>
         <span className={`text-[14px] ${
-          isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+          isSelected ? "text-foreground" : "text-muted-foreground"
         }`}>&mdash;</span>
       </div>
 
@@ -399,9 +399,9 @@ function FileRow({
     <div
       style={style}
       className={`
-        group relative flex items-center h-12 border-b border-[#e8eaed]
+        group relative flex items-center h-12 border-b border-border
         cursor-pointer select-none transition-colors duration-75
-        ${isSelected ? "bg-[#c2e7ff] hover:bg-[#b0d8f5]" : "hover:bg-[#f5f5f5]"}
+        ${isSelected ? "bg-accent/80 hover:bg-accent" : "hover:bg-accent/40"}
       `}
       onClick={handleRowClick}
       role="row"
@@ -429,13 +429,13 @@ function FileRow({
       <div className={`${COL.name} flex items-center gap-2 pr-3`}>
         <span
           className={`text-[14px] truncate leading-5 ${
-            isSelected ? "text-[#001d35] font-medium" : "text-[#202124]"
+            isSelected ? "text-foreground font-medium" : "text-foreground"
           }`}
         >
           {file.name}
         </span>
         {file.is_starred && (
-          <Star className="h-3.5 w-3.5 text-[#5f6368] flex-shrink-0" fill="#5f6368" />
+          <Star className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" fill="currentColor" />
         )}
       </div>
 
@@ -448,7 +448,7 @@ function FileRow({
         />
         <span
           className={`ml-2 text-[14px] truncate ${
-            isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+            isSelected ? "text-foreground" : "text-muted-foreground"
           }`}
         >
           me
@@ -459,7 +459,7 @@ function FileRow({
       <div className={`hidden sm:flex items-center ${COL.date} flex-shrink-0 pr-3`}>
         <span
           className={`text-[14px] truncate ${
-            isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+            isSelected ? "text-foreground" : "text-muted-foreground"
           }`}
         >
           {formatGDriveDate(file.updated_at)}
@@ -470,7 +470,7 @@ function FileRow({
       <div className={`hidden lg:flex items-center ${COL.size} flex-shrink-0 pr-4 transition-opacity duration-100 group-hover:opacity-0`}>
         <span
           className={`text-[14px] tabular-nums ${
-            isSelected ? "text-[#001d35]" : "text-[#5f6368]"
+            isSelected ? "text-foreground" : "text-muted-foreground"
           }`}
         >
           {formatFileSize(file.size_bytes)}
@@ -494,39 +494,39 @@ function FileRow({
         className={`absolute right-14 top-0 bottom-0 flex items-center gap-0.5 pl-3 pr-1
           opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto
           transition-opacity duration-100 ${
-            isSelected ? "bg-[#c2e7ff]" : "bg-[#f5f5f5]"
+            isSelected ? "bg-accent" : "bg-accent/50"
           }`}
         data-no-preview
       >
         <button
           onClick={(e) => { e.stopPropagation(); handleShare(file); }}
           title="Share"
-          className="p-1.5 rounded-full hover:bg-black/10 transition-colors"
+          className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Users className="h-[18px] w-[18px] text-[#5f6368]" />
+          <Users className="h-[18px] w-[18px] text-muted-foreground" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
           title="Download"
-          className="p-1.5 rounded-full hover:bg-black/10 transition-colors"
+          className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Download className="h-[18px] w-[18px] text-[#5f6368]" />
+          <Download className="h-[18px] w-[18px] text-muted-foreground" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleRename(file); }}
           title="Rename"
-          className="p-1.5 rounded-full hover:bg-black/10 transition-colors"
+          className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Pencil className="h-[18px] w-[18px] text-[#5f6368]" />
+          <Pencil className="h-[18px] w-[18px] text-muted-foreground" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleStar(file); }}
           title={file.is_starred ? "Remove from starred" : "Add to starred"}
-          className="p-1.5 rounded-full hover:bg-black/10 transition-colors"
+          className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
           <Star
-            className="h-[18px] w-[18px] text-[#5f6368]"
-            fill={file.is_starred ? "#5f6368" : "none"}
+            className="h-[18px] w-[18px] text-muted-foreground"
+            fill={file.is_starred ? "currentColor" : "none"}
           />
         </button>
       </div>
@@ -554,10 +554,10 @@ function SortHeaderButton({
   return (
     <button
       onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-[14px] font-medium text-[#5f6368] hover:text-[#202124] transition-colors duration-100 whitespace-nowrap"
+      className="flex items-center gap-1 text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors duration-100 whitespace-nowrap"
     >
       {label}
-      {isActive && <ArrowIcon className="h-3.5 w-3.5 text-[#202124]" />}
+      {isActive && <ArrowIcon className="h-3.5 w-3.5 text-foreground" />}
     </button>
   );
 }
@@ -756,13 +756,13 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
   if (files.length === 0 && folders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-[#f1f3f4] flex items-center justify-center mb-5">
-          <FolderOpen className="h-8 w-8 text-[#5f6368]" />
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-5">
+          <FolderOpen className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-[15px] font-medium text-[#202124] mb-1">
+        <h3 className="text-[15px] font-medium text-foreground mb-1">
           No files yet
         </h3>
-        <p className="text-[13px] text-[#5f6368] max-w-xs">
+        <p className="text-[13px] text-muted-foreground max-w-xs">
           Drag & drop files here, or use the Upload button to get started
         </p>
       </div>
@@ -773,7 +773,7 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
     <div ref={containerRef} className="w-full mt-2 overflow-x-clip">
       {/* ─── Sticky wrapper: filter bar + column header ───────────── */}
       <div
-        className={`sticky z-10 bg-white ${stickyOffsetClass ?? ""}`}
+        className={`sticky z-10 bg-surface-white ${stickyOffsetClass ?? ""}`}
         style={stickyOffsetClass ? undefined : { top: stickyOffset }}
       >
         {/* ─── Top Action Bar (filters / selection) ─────────────── */}
@@ -791,7 +791,7 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
 
         {/* ─── Column Header ──────────────────────────────────────── */}
         <div
-          className="flex items-center border-b border-[#e8eaed]"
+          className="flex items-center border-b border-border"
           style={{ height: HEADER_HEIGHT }}
           role="row"
         >
@@ -819,7 +819,7 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
 
         {/* Owner */}
         <div className={`hidden md:block ${COL.owner} flex-shrink-0 pr-3`}>
-          <span className="text-[14px] font-medium text-[#5f6368]">
+          <span className="text-[14px] font-medium text-muted-foreground">
             Owner
           </span>
         </div>
@@ -851,7 +851,7 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
           <button
             onClick={() => handleSort(sortKey)}
             title="Sort"
-            className="flex items-center gap-1.5 text-[14px] text-[#5f6368] hover:text-[#202124] transition-colors"
+            className="flex items-center gap-1.5 text-[14px] text-muted-foreground hover:text-foreground transition-colors"
           >
             <ListFilter className="h-4 w-4" />
             <span className="hidden xl:inline">Sort</span>

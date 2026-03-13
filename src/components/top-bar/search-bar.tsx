@@ -51,7 +51,7 @@ export function SearchBar() {
     <div className="relative group w-full max-w-[720px]">
       {/* Search icon */}
       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-        <Search className="h-4 w-4 text-gray-500 group-focus-within:text-gray-800 transition-colors" />
+        <Search className="h-4 w-4 text-[#5f6368] group-focus-within:text-[#202124] transition-colors" />
       </div>
 
       <Input
@@ -60,12 +60,12 @@ export function SearchBar() {
         placeholder="Search in Drive"
         value={localQuery}
         onChange={(e) => handleSearch(e.target.value)}
-        className="w-full pl-11 pr-10 h-9 bg-[#e9eef6] border-none outline-none ring-0 hover:bg-[#dde3ea] focus-visible:bg-white focus-visible:ring-0 focus-visible:shadow-[0_1px_3px_rgba(0,0,0,0.2)] rounded-full text-sm placeholder:text-gray-500 transition-all duration-150"
+        className="w-full h-11 pl-11 pr-10 rounded-full border border-transparent bg-[#e9eef6] hover:bg-[#e3e9f3] focus-visible:bg-white focus-visible:border-[#d2d6dc] focus-visible:ring-0 focus-visible:shadow-[0_1px_3px_rgba(60,64,67,0.3),0_1px_2px_rgba(60,64,67,0.15)] text-[#202124] text-sm placeholder:text-[#5f6368] transition-all duration-150"
       />
 
       {/* Keyboard shortcut hint — desktop only */}
       <div className="absolute inset-y-0 right-0 pr-4 hidden sm:flex items-center pointer-events-none">
-        <kbd className="inline-flex items-center gap-0.5 text-[11px] font-medium text-gray-400 bg-transparent">
+        <kbd className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#5f6368] bg-transparent">
           <span className="text-[13px] leading-none">⌘</span>K
         </kbd>
       </div>

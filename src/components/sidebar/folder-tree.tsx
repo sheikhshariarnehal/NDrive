@@ -55,13 +55,13 @@ const FolderTreeItem = memo(function FolderTreeItem({
   return (
     <div>
       <div
-        className="flex items-center gap-1 py-1.5 rounded-full hover:bg-gray-200/50 cursor-pointer"
+        className="flex items-center gap-1 py-1.5 rounded-full hover:bg-accent/60 cursor-pointer"
         style={{ paddingLeft: `${level * 16 + 4}px` }}
       >
         {hasChildren ? (
           <button
             onClick={toggleExpanded}
-            className="p-0.5 rounded hover:bg-black/5"
+            className="p-0.5 rounded hover:bg-accent"
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             <ChevronRight
@@ -80,10 +80,10 @@ const FolderTreeItem = memo(function FolderTreeItem({
         >
           <Folder
             className="h-5 w-5 flex-shrink-0"
-            style={{ color: folder.color || "#5f6368" }}
-            fill={folder.color || "#5f6368"}
+            style={{ color: folder.color || "var(--muted-foreground)" }}
+            fill={folder.color || "var(--muted-foreground)"}
           />
-          <span className="text-sm truncate text-gray-700 font-medium">{folder.name}</span>
+          <span className="text-sm truncate text-foreground font-medium">{folder.name}</span>
         </Link>
       </div>
       {expanded && hasChildren && (
