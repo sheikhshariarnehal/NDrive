@@ -402,7 +402,7 @@ class SessionManager {
    * Verify the auth code entered by the user.
    * Returns 'ready' or 'password_required'.
    */
-  async verifyCode(userId: string, code: string): Promise<{ status: string }> {
+  async verifyCode(userId: string, code: string): Promise<{ status: string; phone?: string | null; telegramUserId?: number | null }> {
     const session = this.activeSessions.get(userId);
     if (!session) {
       throw new Error("No auth session in progress");
@@ -461,13 +461,13 @@ class SessionManager {
 
     // Auth complete — finalize
     await this.finalizeAuth(session);
-    return { status: "ready" };
+    return { status: "ready", phone: session.phone, telegramUserId: session.telegramUserId };
   }
 
   /**
    * Verify the 2FA password.
    */
-  async verifyPassword(userId: string, password: string): Promise<{ status: string; telegramUserId: number | null }> {
+  async verifyPassword(userId: string, password: string): Promise<{ status: string; phone?: string | null; telegramUserId: number | null }> {
     const session = this.activeSessions.get(userId);
     if (!session) {
       throw new Error("No auth session in progress");
@@ -495,7 +495,7 @@ class SessionManager {
     session.state = "ready";
     await this.finalizeAuth(session);
 
-    return { status: "ready", telegramUserId: session.telegramUserId };
+    return { status: "ready", phone: session.phone, telegramUserId: session.telegramUserId };
   }
 
   /**
@@ -768,7 +768,7 @@ class SessionManager {
     storageType: string,
     userId?: string,
     telegramChatId?: number | null,
-  ): Promise<{ client: TDLibClient; chatId: number; actualStorageType: string }> {
+  ): Promise<{ client: TDLibClient; chatId: number; actualStorageType: string; sessionExpired?: boolean }> {
     if (storageType === "user" && userId) {
       try {
         const session = await this.getSession(userId);
@@ -781,7 +781,13 @@ class SessionManager {
         console.warn(
           `[SessionManager] User ${userId} session unavailable (${err instanceof Error ? err.message : err}), falling back to bot channel`,
         );
-        // fall through to bot
+        // fall through to bot — flag that user session expired
+        const client = this.getBotClient();
+        const chatId = parseInt(process.env.TELEGRAM_CHANNEL_ID || "0", 10);
+        if (!chatId) {
+          throw new Error("TELEGRAM_CHANNEL_ID not configured");
+        }
+        return { client, chatId, actualStorageType: "bot", sessionExpired: true };
       }
     }
 

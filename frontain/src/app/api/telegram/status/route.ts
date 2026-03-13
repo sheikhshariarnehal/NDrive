@@ -28,14 +28,48 @@ export async function GET() {
       .single();
 
     if (profile?.telegram_connected) {
-      return NextResponse.json({
-        connected: true,
-        phone: profile.telegram_phone,
-        telegramUserId: profile.telegram_user_id,
-      });
+      // DB says connected — verify the backend session is still alive
+      try {
+        const response = await fetch(
+          `${BACKEND_URL}/api/telegram/status/${encodeURIComponent(user.id)}`,
+          { headers: { "X-API-Key": API_KEY }, signal: AbortSignal.timeout(5000) },
+        );
+
+        if (response.ok) {
+          const backendData = await response.json();
+          // Backend confirms session exists on disk or in memory
+          if (backendData.connected) {
+            return NextResponse.json({
+              connected: true,
+              phone: profile.telegram_phone,
+              telegramUserId: profile.telegram_user_id,
+            });
+          }
+        }
+      } catch {
+        // Backend unreachable — trust DB, session will lazy-reconnect when needed
+        return NextResponse.json({
+          connected: true,
+          phone: profile.telegram_phone,
+          telegramUserId: profile.telegram_user_id,
+        });
+      }
+
+      // Backend says session is gone — update DB to reflect reality
+      await supabase
+        .from("users")
+        .update({
+          telegram_connected: false,
+          telegram_phone: null,
+          telegram_user_id: null,
+          telegram_connected_at: null,
+        })
+        .eq("id", user.id);
+
+      return NextResponse.json({ connected: false });
     }
 
-    // Also check active session on backend (in case DB is stale)
+    // DB says not connected — also check backend (in case DB is stale and backend has a session)
     try {
       const response = await fetch(
         `${BACKEND_URL}/api/telegram/status/${encodeURIComponent(user.id)}`,
@@ -44,10 +78,16 @@ export async function GET() {
 
       if (response.ok) {
         const data = await response.json();
+        // Backend has a session the DB doesn't know about — sync DB
+        if (data.connected) {
+          await supabase
+            .from("users")
+            .update({ telegram_connected: true })
+            .eq("id", user.id);
+        }
         return NextResponse.json(data);
       }
     } catch {
-      // Backend unreachable — fall through to DB-only result
       console.warn("[telegram/status] Backend unreachable, using DB-only status");
     }
 

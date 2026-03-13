@@ -355,7 +355,7 @@ router.post("/complete", async (req: Request, res: Response) => {
     }
 
     // ── Upload to Telegram (using shared helpers) ────────────────────────
-    const { client, chatId, actualStorageType } = await sessionManager.resolveClientAndChat(
+    const { client, chatId, actualStorageType, sessionExpired } = await sessionManager.resolveClientAndChat(
       session.storageType,
       session.userId || undefined,
     );
@@ -377,6 +377,7 @@ router.post("/complete", async (req: Request, res: Response) => {
       file_size: fileInfo.size,
       chat_id: chatId,
       storage_type: actualStorageType,
+      session_expired: sessionExpired || false,
     });
 
     // Cleanup in background (don't block response)

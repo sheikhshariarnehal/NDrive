@@ -97,6 +97,21 @@ export async function POST(request: NextRequest) {
       logLabel: fileName,
     });
 
+    // If the backend detected that the user's Telegram session expired,
+    // update DB so the user is informed and can reconnect.
+    if (telegramResult.session_expired && userId) {
+      console.warn(`[upload/complete] Telegram session expired for user ${userId}, marking disconnected`);
+      await supabase
+        .from("users")
+        .update({
+          telegram_connected: false,
+          telegram_phone: null,
+          telegram_user_id: null,
+          telegram_connected_at: null,
+        })
+        .eq("id", userId);
+    }
+
     return NextResponse.json({ file: fileRecord }, { status: 201 });
   } catch (error) {
     console.error("[upload/complete] Error:", error);
