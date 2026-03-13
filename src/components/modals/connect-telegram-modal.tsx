@@ -14,7 +14,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, KeyRound, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Telegram from "@/components/ui/Telegram";
+import { Loader2, KeyRound, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 type Step = "phone" | "code" | "password" | "success" | "error";
 
@@ -155,153 +165,156 @@ export function ConnectTelegramModal() {
 
   return (
     <Dialog open={connectTelegramModalOpen} onOpenChange={handleClose}>
-      <DialogContent className={step === "phone" ? "sm:max-w-2xl" : "sm:max-w-md"}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent
+        onInteractOutside={(event) => event.preventDefault()}
+        className="w-[calc(100vw-1.5rem)] max-w-[22rem] sm:max-w-md rounded-2xl border p-3 sm:p-4"
+      >
+        <DialogHeader className="items-center gap-1.5 text-center sm:gap-2">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center">
             {step === "success" ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <CheckCircle2 className="h-6 w-6 text-green-500" />
+            ) : step === "password" ? (
+              <Lock className="h-6 w-6 text-[#032b2b]" />
+            ) : step === "code" ? (
+              <KeyRound className="h-6 w-6 text-[#032b2b]" />
             ) : (
-              <Phone className="h-5 w-5" />
+              <Telegram className="h-12 w-12" />
             )}
-            {step === "success" ? "Telegram Connected" : step === "phone" ? "Verify phone number" : "Connect Telegram"}
+          </div>
+          <DialogTitle className="text-center text-[1.9rem] font-semibold leading-[1.15] tracking-tight">
+            {step === "success" ? "Telegram Connected" : step === "phone" ? "Verify phone number" : step === "code" ? "Check your messages" : "Two-Factor Authentication"}
           </DialogTitle>
-          <DialogDescription>
-            {step === "phone" && "We use phone verification to keep your account secure. Enter your number to receive a one-time Telegram code."}
-            {step === "code" && "Enter the code sent to your Telegram app."}
+          <DialogDescription className="mx-auto max-w-full text-center text-sm leading-relaxed text-muted-foreground">
+            {step === "phone" && "Enter your Telegram account number to connect storage. Files you upload will be stored in that Telegram account."}
+            {step === "code" && "We've sent a code to your Telegram app. Please enter it below."}
             {step === "password" && "Your account has Two-Factor Authentication enabled. Enter your password."}
             {step === "success" && "Your Telegram account is now linked. All new uploads will be stored in your Saved Messages."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 py-1.5 sm:space-y-4 sm:py-2">
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-500 bg-red-500/10 rounded-md p-3">
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
 
           {step === "phone" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <select
-                    id="country"
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    disabled={isLoading}
-                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {COUNTRY_OPTIONS.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {option.code} ({option.label})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="space-y-3">
+              <fieldset className="rounded-xl border border-slate-300/80 bg-slate-50/80 px-2 pb-2 pt-1 transition-colors duration-200 focus-within:border-[#032b2b]/40 sm:px-2.5 sm:pb-2.5">
+                <legend className="px-1 text-[11px] font-semibold tracking-wide text-slate-600">Mobile</legend>
+                <div className="flex items-center px-1">
+                  <div className="w-[96px] shrink-0 sm:w-[108px]">
+                    <Label htmlFor="country" className="sr-only">Country</Label>
+                    <Select
+                      value={countryCode}
+                      onValueChange={setCountryCode}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="country" className="[&_[data-country-name]]:hidden h-10 rounded-none border-0 bg-transparent px-2 text-base font-semibold shadow-none outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <SelectValue placeholder="Code" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[100]">
+                        {COUNTRY_OPTIONS.map((option) => (
+                          <SelectItem key={option.code} value={option.code} className="cursor-pointer">
+                            <span className="mr-2 font-medium">{option.code}</span>
+                            <span data-country-name className="text-muted-foreground text-sm">{option.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="1712345678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, handleSendCode)}
-                    disabled={isLoading}
-                    autoFocus
-                    className="h-11"
-                  />
-                </div>
-              </div>
+                  <div className="h-5 w-px bg-slate-300/90" />
 
-              <p className="text-xs text-muted-foreground">
-                Bangladesh (+880) is selected by default. You can still paste a full international number starting with +.
-              </p>
+                  <div className="min-w-0 flex-1">
+                    <Label htmlFor="phone" className="sr-only">Phone number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Phone number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, handleSendCode)}
+                      disabled={isLoading}
+                      autoFocus
+                      className="h-10 rounded-none border-0 bg-transparent px-2.5 text-base shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0 placeholder:text-muted-foreground/70"
+                    />
+                  </div>
+                </div>
+              </fieldset>
             </div>
           )}
 
           {step === "code" && (
-            <div className="space-y-2">
-              <Label htmlFor="code" className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4" />
-                Verification Code
-              </Label>
-              <Input
+            <div className="space-y-3 flex flex-col items-center justify-center">
+              <Label htmlFor="code" className="sr-only">Verification Code</Label>
+              <InputOTP
                 id="code"
-                type="text"
-                inputMode="numeric"
-                placeholder="12345"
+                maxLength={5}
+                pattern={REGEXP_ONLY_DIGITS}
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={setCode}
                 onKeyDown={(e) => handleKeyDown(e, handleVerifyCode)}
                 disabled={isLoading}
                 autoFocus
-                maxLength={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                Check your Telegram app for the login code
-              </p>
+              >
+                <InputOTPGroup className="gap-2">
+                  <InputOTPSlot index={0} className="h-12 w-12 rounded-xl border text-xl font-medium sm:h-14 sm:w-14 sm:text-2xl" />
+                  <InputOTPSlot index={1} className="h-12 w-12 rounded-xl border text-xl font-medium sm:h-14 sm:w-14 sm:text-2xl" />
+                  <InputOTPSlot index={2} className="h-12 w-12 rounded-xl border text-xl font-medium sm:h-14 sm:w-14 sm:text-2xl" />
+                  <InputOTPSlot index={3} className="h-12 w-12 rounded-xl border text-xl font-medium sm:h-14 sm:w-14 sm:text-2xl" />
+                  <InputOTPSlot index={4} className="h-12 w-12 rounded-xl border text-xl font-medium sm:h-14 sm:w-14 sm:text-2xl" />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
           )}
 
           {step === "password" && (
-            <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Two-Factor Password
-              </Label>
+            <div className="space-y-3">
+              <Label htmlFor="password" className="sr-only">Two-Factor Password</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your 2FA password"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, handleVerifyPassword)}
                 disabled={isLoading}
                 autoFocus
+                className="h-11 w-full rounded-lg text-base focus-visible:ring-2 focus-visible:ring-[#032b2b]/20"
               />
-            </div>
-          )}
-
-          {step === "success" && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-              <p className="text-sm text-muted-foreground text-center">
-                Your files will now be stored directly in your Telegram account.
-              </p>
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-0.5 sm:mt-1 sm:justify-center">
           {step === "phone" && (
             <Button
               onClick={handleSendCode}
               disabled={!phone.trim() || isLoading}
-              className="w-full bg-[#032b2b] text-white hover:bg-[#043737]"
+              className="h-11 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition-all hover:bg-blue-700"
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Continue
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              Send Code
             </Button>
           )}
           {step === "code" && (
-            <Button onClick={handleVerifyCode} disabled={!code.trim() || isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleVerifyCode} disabled={!code.trim() || isLoading} className="h-11 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition-all hover:bg-blue-700">
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               Verify Code
             </Button>
           )}
           {step === "password" && (
-            <Button onClick={handleVerifyPassword} disabled={!password || isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleVerifyPassword} disabled={!password || isLoading} className="h-11 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition-all hover:bg-blue-700">
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               Submit Password
             </Button>
           )}
           {step === "success" && (
-            <Button onClick={() => handleClose(false)}>
-              Done
+            <Button onClick={() => handleClose(false)} className="h-11 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition-all hover:bg-blue-700">
+              Continue to Dashboard
             </Button>
           )}
         </DialogFooter>
