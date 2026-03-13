@@ -25,6 +25,8 @@ export interface TDLibUploadResponse {
   chat_id?: number;
   /** Storage type: 'bot' or 'user' */
   storage_type?: string;
+  /** True if user's Telegram session expired and we fell back to bot */
+  session_expired?: boolean;
 }
 
 /**
