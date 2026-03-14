@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +18,7 @@ interface AuthContextType {
   isGuest: boolean;
   isLoading: boolean;
   isTelegramConnected: boolean;
+  isTelegramStatusLoading: boolean;
   telegramPhone: string | null;
   signOut: () => Promise<void>;
   refreshTelegramStatus: () => void;
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   isGuest: false,
   isLoading: true,
   isTelegramConnected: false,
+  isTelegramStatusLoading: true,
   telegramPhone: null,
   signOut: async () => {},
   refreshTelegramStatus: () => {},
@@ -71,21 +74,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTelegramStatusLoading, setIsTelegramStatusLoading] = useState(true);
   const [isTelegramConnected, setIsTelegramConnected] = useState(false);
   const [telegramPhone, setTelegramPhone] = useState<string | null>(null);
   const supabase = createClient();
+  const statusReqRef = useRef<Promise<void> | null>(null);
 
   const fetchTelegramStatus = async () => {
-    try {
-      const res = await fetch("/api/telegram/status");
-      if (res.ok) {
-        const data = await res.json();
-        setIsTelegramConnected(!!data.connected);
-        setTelegramPhone(data.phone || null);
+    if (statusReqRef.current) return statusReqRef.current;
+
+    setIsTelegramStatusLoading(true);
+    statusReqRef.current = (async () => {
+      try {
+        const res = await fetch("/api/telegram/status");
+        if (res.ok) {
+          const data = await res.json();
+          setIsTelegramConnected(!!data.connected);
+          setTelegramPhone(data.phone || null);
+        } else {
+          setIsTelegramConnected(false);
+          setTelegramPhone(null);
+        }
+      } catch {
+        // Non-fatal — status check failure doesn't block auth
+        setIsTelegramConnected(false);
+        setTelegramPhone(null);
+      } finally {
+        setIsTelegramStatusLoading(false);
+        statusReqRef.current = null;
       }
-    } catch {
-      // Non-fatal — status check failure doesn't block auth
-    }
+    })();
+    return statusReqRef.current;
   };
 
   const refreshTelegramStatus = () => {
@@ -121,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // Create guest session for unauthenticated users
           setGuestSessionId(getGuestSessionId());
+          setIsTelegramStatusLoading(false);
         }
       } catch (error) {
         console.error("Auth session error:", error);
@@ -146,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchTelegramStatus();
       } else {
         setGuestSessionId(getGuestSessionId());
+        setIsTelegramStatusLoading(false);
       }
     });
 
@@ -156,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setIsTelegramConnected(false);
+    setIsTelegramStatusLoading(false);
     setTelegramPhone(null);
   };
 
@@ -163,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, guestSessionId, isGuest, isLoading, isTelegramConnected, telegramPhone, signOut, refreshTelegramStatus }}
+      value={{ user, guestSessionId, isGuest, isLoading, isTelegramConnected, isTelegramStatusLoading, telegramPhone, signOut, refreshTelegramStatus }}
     >
       {children}
     </AuthContext.Provider>

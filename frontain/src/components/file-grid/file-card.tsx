@@ -20,6 +20,7 @@ import type { DbFile } from "@/types/file.types";
 
 interface FileCardProps {
   file: DbFile;
+  priority?: boolean;
 }
 
 /* Google Drive icon + color per file category */
@@ -74,7 +75,7 @@ function shouldShowThumbnail(file: DbFile, category: string): boolean {
   return !!getThumbnailSrc(file);
 }
 
-export function FileCard({ file }: FileCardProps) {
+export function FileCard({ file, priority = false }: FileCardProps) {
   const { setPreviewFileId } = useUIStore();
   const category = getFileCategory(file.mime_type);
 
@@ -83,7 +84,7 @@ export function FileCard({ file }: FileCardProps) {
 
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(priority);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
@@ -94,7 +95,7 @@ export function FileCard({ file }: FileCardProps) {
 
   // IntersectionObserver — only load thumbnails when the card enters the viewport
   useEffect(() => {
-    if (!hasThumbnail || !thumbnailSrc) return;
+    if (priority || !hasThumbnail || !thumbnailSrc) return;
 
     const el = cardRef.current;
     if (!el) return;
@@ -116,7 +117,7 @@ export function FileCard({ file }: FileCardProps) {
   return (
     <div
       ref={cardRef}
-      className="group flex flex-col rounded-lg border border-[#dadce0] bg-white hover:border-[#174ea6] hover:shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)] transition-[box-shadow,border-color] duration-200 overflow-hidden cursor-pointer aspect-square"
+      className="group flex flex-col rounded-lg border border-[#dadce0] bg-card hover:border-[#174ea6] hover:shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)] transition-[box-shadow,border-color] duration-200 overflow-hidden cursor-pointer aspect-square"
     >
       {/* ===== TOP BAR: icon + name + ⋮ ===== */}
       <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-10 min-h-[32px] sm:min-h-[40px] max-h-[32px] sm:max-h-[40px] min-w-0 flex-shrink-0">
@@ -154,7 +155,8 @@ export function FileCard({ file }: FileCardProps) {
             }`}
             onLoad={onImgLoad}
             onError={onImgError}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
           />
         )}

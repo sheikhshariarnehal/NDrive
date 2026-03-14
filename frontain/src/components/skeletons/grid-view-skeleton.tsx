@@ -18,7 +18,7 @@ interface GridViewSkeletonProps {
 
 function FolderPillSkeleton() {
   return (
-    <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-[#dadce0] bg-white px-2.5 sm:px-3 py-2.5 animate-pulse">
+    <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-[#dadce0] bg-card px-2.5 sm:px-3 py-2.5 animate-pulse">
       {/* Folder icon */}
       <div className="h-4 w-4 sm:h-5 sm:w-5 rounded bg-[#e0e0e0] flex-shrink-0" />
       {/* Folder name */}
@@ -29,7 +29,7 @@ function FolderPillSkeleton() {
 
 function FileCardSkeleton() {
   return (
-    <div className="rounded-lg border border-[#dadce0] bg-white overflow-hidden aspect-square flex flex-col">
+    <div className="rounded-lg border border-[#dadce0] bg-card overflow-hidden aspect-square flex flex-col">
       {/* Top bar — matches h-8 sm:h-10 with icon + name */}
       <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 sm:h-10 flex-shrink-0 animate-pulse">
         <div className="h-4 w-4 sm:h-[18px] sm:w-[18px] rounded bg-[#e0e0e0] flex-shrink-0" />

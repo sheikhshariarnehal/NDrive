@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useState, useCallback } from "react";
 import Link from "next/link";
 import { ChevronRight, Folder } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,11 +8,11 @@ import type { DbFolder } from "@/types/file.types";
 
 interface FolderTreeProps {
   folders: DbFolder[];
-  allFolders: DbFolder[];
+  childrenByParent: Map<string, DbFolder[]>;
   level?: number;
 }
 
-export const FolderTree = memo(function FolderTree({ folders, allFolders, level = 0 }: FolderTreeProps) {
+export const FolderTree = memo(function FolderTree({ folders, childrenByParent, level = 0 }: FolderTreeProps) {
   if (folders.length === 0) {
     return (
       <p className="text-xs text-muted-foreground px-2 py-1">No folders yet</p>
@@ -25,7 +25,7 @@ export const FolderTree = memo(function FolderTree({ folders, allFolders, level 
         <FolderTreeItem
           key={folder.id}
           folder={folder}
-          allFolders={allFolders}
+          childrenByParent={childrenByParent}
           level={level}
         />
       ))}
@@ -35,33 +35,29 @@ export const FolderTree = memo(function FolderTree({ folders, allFolders, level 
 
 const FolderTreeItem = memo(function FolderTreeItem({
   folder,
-  allFolders,
+  childrenByParent,
   level,
 }: {
   folder: DbFolder;
-  allFolders: DbFolder[];
+  childrenByParent: Map<string, DbFolder[]>;
   level: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
-  // Memoize the children lookup so it doesn't re-filter on every parent render.
-  const children = useMemo(
-    () => allFolders.filter((f) => f.parent_id === folder.id),
-    [allFolders, folder.id]
-  );
+  const children = childrenByParent.get(folder.id) || [];
   const hasChildren = children.length > 0;
 
   return (
     <div>
       <div
-        className="flex items-center gap-1 py-1.5 rounded-full hover:bg-gray-200/50 cursor-pointer"
+        className="flex items-center gap-1 py-1.5 rounded-full hover:bg-accent/60 cursor-pointer"
         style={{ paddingLeft: `${level * 16 + 4}px` }}
       >
         {hasChildren ? (
           <button
             onClick={toggleExpanded}
-            className="p-0.5 rounded hover:bg-black/5"
+            className="p-0.5 rounded hover:bg-accent"
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             <ChevronRight
@@ -80,16 +76,16 @@ const FolderTreeItem = memo(function FolderTreeItem({
         >
           <Folder
             className="h-5 w-5 flex-shrink-0"
-            style={{ color: folder.color || "#5f6368" }}
-            fill={folder.color || "#5f6368"}
+            style={{ color: folder.color || "var(--muted-foreground)" }}
+            fill={folder.color || "var(--muted-foreground)"}
           />
-          <span className="text-sm truncate text-gray-700 font-medium">{folder.name}</span>
+          <span className="text-sm truncate text-foreground font-medium">{folder.name}</span>
         </Link>
       </div>
       {expanded && hasChildren && (
         <FolderTree
           folders={children}
-          allFolders={allFolders}
+          childrenByParent={childrenByParent}
           level={level + 1}
         />
       )}

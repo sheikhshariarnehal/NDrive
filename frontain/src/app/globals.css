@@ -36,6 +36,7 @@
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
+  --color-surface-white: var(--surface-white);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --radius-sm: calc(var(--radius) - 4px);
@@ -49,9 +50,10 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: rgb(248,250,253);
+  --surface-white: rgb(255,255,255);
   --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
+  --card: #f0f4f9;
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);

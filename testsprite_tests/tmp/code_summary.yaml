@@ -1,0 +1,93 @@
+version: "2"
+type: backend
+tech_stack:
+  - TypeScript
+  - Next.js 16 App Router
+  - Express 4
+  - Supabase PostgreSQL
+  - TDLib (Telegram MTProto)
+features:
+  - name: File Upload API
+    description: Uploads files to Telegram storage through the TDLib service and stores metadata in Supabase.
+    files:
+      - frontain/src/app/api/upload/route.ts
+      - tdlib-service/src/routes/upload.ts
+      - tdlib-service/src/routes/chunked-upload.ts
+    endpoints:
+      - method: POST
+        path: /api/upload
+        description: Upload a file with multipart form data.
+        auth_required: false
+      - method: POST
+        path: /chunked-upload/init
+        description: Initialize chunked upload session for large files.
+        auth_required: true
+      - method: POST
+        path: /chunked-upload/complete
+        description: Complete chunked upload and send assembled file to Telegram.
+        auth_required: true
+    depends_on:
+      - Supabase metadata tables
+      - TDLib service availability
+  - name: File Download and Streaming API
+    description: Streams files by id with range support and cache-aware fallback paths.
+    files:
+      - frontain/src/app/file/[...params]/route.ts
+      - frontain/src/app/api/download/[...params]/route.ts
+      - tdlib-service/src/routes/download.ts
+    endpoints:
+      - method: GET
+        path: /file/[...params]
+        description: Public file stream route using signed tokenized path.
+        auth_required: false
+      - method: GET
+        path: /api/download/[...params]
+        description: Auth-scoped download proxy route.
+        auth_required: true
+      - method: GET
+        path: /download/:id
+        description: Backend stream endpoint with cache and range handling.
+        auth_required: true
+    depends_on:
+      - TDLib file access
+      - Supabase file metadata
+  - name: Metadata CRUD API
+    description: Manages file and folder metadata and sharing records in Supabase.
+    files:
+      - frontain/src/app/api/files/route.ts
+      - frontain/src/app/api/folders/route.ts
+      - frontain/src/app/api/share/route.ts
+      - frontain/src/app/api/share/[token]/route.ts
+    endpoints:
+      - method: GET
+        path: /api/files
+        description: List files with filters for folder, starred and trashed state.
+        auth_required: true
+      - method: PATCH
+        path: /api/files
+        description: Update file metadata such as rename, move, trash and starred flags.
+        auth_required: true
+      - method: GET
+        path: /api/folders
+        description: List folders for current user or guest session.
+        auth_required: true
+      - method: POST
+        path: /api/share
+        description: Create a public share token for a file.
+        auth_required: true
+      - method: GET
+        path: /api/share/[token]
+        description: Resolve shared token metadata and optional download path.
+        auth_required: false
+    depends_on:
+      - Supabase RLS and service-role paths
+known_limitations:
+  - issue: Upload concurrency limiters are duplicated across single and chunked upload handlers.
+    location: tdlib-service/src/routes/upload.ts
+    impact: Parallel uploads can be throttled inconsistently.
+  - issue: Upload deduplication is currently name-based instead of content-hash based.
+    location: tdlib-service/src/routes/upload.ts
+    impact: Duplicate content with different names is stored repeatedly.
+  - issue: Chunked upload sessions are in-memory and do not survive restarts.
+    location: tdlib-service/src/routes/chunked-upload.ts
+    impact: In-progress large uploads fail after backend restart.

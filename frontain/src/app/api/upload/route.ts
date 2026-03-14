@@ -9,6 +9,14 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("multipart/form-data")) {
+      return NextResponse.json(
+        { error: "Content-Type must be multipart/form-data" },
+        { status: 400 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const folderId = formData.get("folder_id") as string | null;
@@ -129,8 +137,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ file: fileRecord }, { status: 201 });
   } catch (error) {
     console.error("Upload error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Upload failed";
+    if (errorMessage.toLowerCase().includes("formdata")) {
+      return NextResponse.json({ error: "Invalid multipart form data" }, { status: 400 });
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed" },
+      { error: errorMessage },
       { status: 500 }
     );
   }
