@@ -85,49 +85,88 @@ export default function SignUpPage() {
   return (
     <div className="min-h-dvh flex bg-background sm:bg-muted/40 text-foreground">
       {/* Left Column - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 xl:p-12 bg-gray-900 text-white relative overflow-hidden">
-        {/* Abstract background shapes */}
-        <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-[20%] left-[20%] w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-        
+<div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 xl:p-14 bg-[#09090b] text-white relative overflow-hidden border-r border-white/5">
+        {/* Animated SVG & Abstract Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none select-none">
+          {/* Subtle moving grid */}
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wMSkiLz48L3N2Zz4=')] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_40%,#000_10%,transparent_100%)]" />
+          
+          {/* Animated Orbs */}
+          <div className="absolute -top-[20%] -right-[10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[120px] mix-blend-screen animate-[spin_20s_linear_infinite_reverse] origin-bottom-left" />
+          <div className="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] rounded-full bg-indigo-600/20 blur-[130px] mix-blend-screen animate-[spin_25s_linear_infinite] origin-top-right" />
+
+          {/* Floating Geometric Lines SVG */}
+          <svg className="absolute inset-0 w-full h-full opacity-40" xmlns="http://www.w3.org/2000/svg">
+            <style>{`
+              @keyframes line-dash { to { stroke-dashoffset: -1000; } }
+              @keyframes float-up { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+              @keyframes float-down { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(20px); } }
+              .animated-line { stroke-dasharray: 20 15; animation: line-dash 30s linear infinite; }
+              .floating-group { animation: float-up 10s ease-in-out infinite; }
+              .floating-group-delayed { animation: float-down 14s ease-in-out infinite; }
+            `}</style>
+            <g className="floating-group" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none">
+              <path className="animated-line" d="M -100 200 C 300 100, 600 400, 1000 150" />
+              <path className="animated-line" d="M -100 250 C 400 150, 500 500, 1100 200" stroke="rgba(99,102,241,0.2)" />
+              <circle cx="300" cy="180" r="3" fill="rgba(99,102,241,0.5)" />
+              <circle cx="700" cy="320" r="4" fill="rgba(59,130,246,0.5)" />
+            </g>
+            <g className="floating-group-delayed" stroke="rgba(255,255,255,0.07)" strokeWidth="1" fill="none">
+              <path className="animated-line" d="M -100 800 C 400 900, 700 600, 1200 850" />
+              <path className="animated-line" d="M -100 750 C 300 850, 800 550, 1100 750" stroke="rgba(59,130,246,0.2)" />
+              <circle cx="450" cy="780" r="3" fill="rgba(59,130,246,0.5)" />
+              <circle cx="850" cy="680" r="4" fill="rgba(99,102,241,0.5)" />
+            </g>
+            <g stroke="rgba(255,255,255,0.05)" strokeWidth="0.5">
+              <line x1="300" y1="180" x2="450" y2="780" className="floating-group" />
+              <line x1="700" y1="320" x2="850" y2="680" className="floating-group-delayed" />
+            </g>
+          </svg>
+        </div>
+
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-white/10">
-            <NextImage src="/logo.webp" alt="NDrive" width={24} height={24} />
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 shadow-xl shadow-black/50">
+            <NextImage src="/logo.webp" alt="NDrive" width={28} height={28} className="drop-shadow-md" />
           </div>
           <div>
-            <span className="text-2xl font-bold tracking-tight block">NDrive</span>
+            <span className="text-3xl font-bold tracking-tight block bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent">
+              NDrive
+            </span>
           </div>
         </div>
 
-        <div className="relative z-10 space-y-5 max-w-lg">
-          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
+        <div className="relative z-10 flex-1 flex flex-col justify-center max-w-lg">
+          <h2 className="text-5xl font-bold leading-[1.1] tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent mb-6">
             Create your account today.
           </h2>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-lg leading-relaxed font-light mb-10">
             Store unlimited files for free. Secure, fast, and easy to use. Powered by MTProto backend and React frontend.
           </p>
-          
-          <div className="grid grid-cols-2 gap-4 pt-6">
-            <div className="space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-gray-800/50 flex flex-col items-center justify-center border border-gray-700/50">
-                <Send className="w-5 h-5 text-blue-400" />
+
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-3 group cursor-default">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex flex-col items-center justify-center border border-white/10 transition-all duration-300 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+                <Send className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="font-medium text-gray-200">Telegram Storage</h3>
-              <p className="text-sm text-gray-500">Files stored reliably in Telegram servers</p>
+              <div>
+                <h3 className="font-semibold text-gray-200 text-base mb-1">Telegram Storage</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">Files stored reliably in Telegram servers</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-gray-800/50 flex flex-col items-center justify-center border border-gray-700/50">
-                <Shield className="w-5 h-5 text-emerald-400" />
+            <div className="space-y-3 group cursor-default">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex flex-col items-center justify-center border border-white/10 transition-all duration-300 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                <Shield className="w-6 h-6 text-emerald-400" />
               </div>
-              <h3 className="font-medium text-gray-200">End-to-End Secure</h3>
-              <p className="text-sm text-gray-500">Your files are private and encrypted</p>
+              <div>
+                <h3 className="font-semibold text-gray-200 text-base mb-1">End-to-End Secure</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">Your files are private and encrypted</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} NDrive by <a href="https://ntechbd.app" target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-300 hover:text-blue-300 transition-colors underline decoration-blue-400/50 hover:decoration-blue-300">Ntechbd Solutions</a>. All rights reserved.
+        <div className="relative z-10 text-sm text-gray-500/80 font-medium">
+          &copy; {new Date().getFullYear()} NDrive by <a href="https://ntechbd.app" target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-400 hover:text-blue-400 transition-colors underline decoration-transparent hover:decoration-blue-400/50 underline-offset-4">Ntechbd Solutions</a>. All rights reserved.
         </div>
       </div>
 

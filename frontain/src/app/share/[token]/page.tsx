@@ -11,6 +11,7 @@ import { TextPreview } from "@/components/preview/text-preview";
 import { JsonPreview } from "@/components/preview/json-preview";
 import { PptxPreview } from "@/components/preview/pptx-preview";
 import { getFileCategory, formatFileSize, isOfficeFile, isCsvFile, isPptxFile, isJsonFile, isTextFile, isPreviewableFile, isLegacyPptFile } from "@/types/file.types";
+import { getFileUrl } from "@/lib/utils";
 import {
   Download,
   FileIcon,
@@ -280,14 +281,14 @@ function SharePreviewModal({
           )}
           {/* PowerPoint presentations (.pptx) */}
           {isPptxFile(file.mime_type, file.name) && (
-            <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+            <div className="absolute inset-0 w-full h-full">
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* Legacy PowerPoint (.ppt) */}
           {isLegacyPptFile(file.mime_type, file.name) && (
-            <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+            <div className="absolute inset-0 w-full h-full">
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* CSV files */}
@@ -475,7 +476,7 @@ export default function SharePage() {
           </div>
         </header>
 
-        <main className="flex-1 flex items-center justify-center overflow-hidden">
+        <main className="flex-1 flex items-center justify-center overflow-hidden relative">
           {category === "image" && (
             <div className="w-full h-full">
               <ImagePreview src={previewUrl} alt={file.name} />
@@ -510,14 +511,14 @@ export default function SharePage() {
           )}
           {/* PowerPoint presentations (.pptx) */}
           {isPptxFile(file.mime_type, file.name) && (
-            <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+            <div className="absolute inset-0 w-full h-full">
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* Legacy PowerPoint (.ppt) */}
           {isLegacyPptFile(file.mime_type, file.name) && (
-            <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+            <div className="absolute inset-0 w-full h-full">
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* CSV files */}
@@ -790,21 +791,6 @@ export default function SharePage() {
           )}
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-[#202124] border-t border-white/10 py-4 flex-shrink-0">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <p className="text-sm text-white/30">
-            Shared via{" "}
-            <a
-              href="/"
-              className="text-white/50 hover:text-white/70 font-medium"
-            >
-              CloudVault
-            </a>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
