@@ -64,14 +64,14 @@ export function TopBar() {
             <Button
               variant="outline"
               size="sm"
-              className="hidden sm:flex h-9 px-5 text-sm font-medium border-border hover:bg-accent rounded-full shadow-none transition-colors"
+              className="h-9 px-5 text-sm font-medium border-border hover:bg-accent rounded-full shadow-none transition-colors"
               onClick={() => router.push("/auth/login")}
             >
               Login
             </Button>
             <Button
               size="sm"
-              className="h-9 px-5 text-sm font-medium rounded-full shadow-none transition-colors"
+              className="hidden sm:flex h-9 px-5 text-sm font-medium rounded-full shadow-none transition-colors"
               onClick={() => router.push("/auth/signup")}
             >
               Sign up
