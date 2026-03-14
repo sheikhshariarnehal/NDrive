@@ -192,8 +192,8 @@ export default function DashboardPage() {
             {effectiveViewMode === "grid" ? (
               filteredFiles.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                  {filteredFiles.map((file) => (
-                    <FileCard key={file.id} file={file} />
+                  {filteredFiles.map((file, index) => (
+                    <FileCard key={file.id} file={file} priority={index < 12} />
                   ))}
                 </div>
               ) : (
@@ -218,8 +218,8 @@ export default function DashboardPage() {
             {effectiveViewMode === "grid" ? (
               starredFiles.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                  {starredFiles.map((file) => (
-                    <FileCard key={file.id} file={file} />
+                  {starredFiles.map((file, index) => (
+                    <FileCard key={file.id} file={file} priority={index < 12} />
                   ))}
                 </div>
               ) : (

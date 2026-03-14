@@ -20,6 +20,7 @@ import type { DbFile } from "@/types/file.types";
 
 interface FileCardProps {
   file: DbFile;
+  priority?: boolean;
 }
 
 /* Google Drive icon + color per file category */
@@ -74,7 +75,7 @@ function shouldShowThumbnail(file: DbFile, category: string): boolean {
   return !!getThumbnailSrc(file);
 }
 
-export function FileCard({ file }: FileCardProps) {
+export function FileCard({ file, priority = false }: FileCardProps) {
   const { setPreviewFileId } = useUIStore();
   const category = getFileCategory(file.mime_type);
 
@@ -83,7 +84,7 @@ export function FileCard({ file }: FileCardProps) {
 
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(priority);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
@@ -94,7 +95,7 @@ export function FileCard({ file }: FileCardProps) {
 
   // IntersectionObserver — only load thumbnails when the card enters the viewport
   useEffect(() => {
-    if (!hasThumbnail || !thumbnailSrc) return;
+    if (priority || !hasThumbnail || !thumbnailSrc) return;
 
     const el = cardRef.current;
     if (!el) return;
@@ -154,7 +155,8 @@ export function FileCard({ file }: FileCardProps) {
             }`}
             onLoad={onImgLoad}
             onError={onImgError}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
           />
         )}

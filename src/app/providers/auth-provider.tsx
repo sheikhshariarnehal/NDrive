@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -77,26 +78,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isTelegramConnected, setIsTelegramConnected] = useState(false);
   const [telegramPhone, setTelegramPhone] = useState<string | null>(null);
   const supabase = createClient();
+  const statusReqRef = useRef<Promise<void> | null>(null);
 
   const fetchTelegramStatus = async () => {
+    if (statusReqRef.current) return statusReqRef.current;
+
     setIsTelegramStatusLoading(true);
-    try {
-      const res = await fetch("/api/telegram/status");
-      if (res.ok) {
-        const data = await res.json();
-        setIsTelegramConnected(!!data.connected);
-        setTelegramPhone(data.phone || null);
-      } else {
+    statusReqRef.current = (async () => {
+      try {
+        const res = await fetch("/api/telegram/status");
+        if (res.ok) {
+          const data = await res.json();
+          setIsTelegramConnected(!!data.connected);
+          setTelegramPhone(data.phone || null);
+        } else {
+          setIsTelegramConnected(false);
+          setTelegramPhone(null);
+        }
+      } catch {
+        // Non-fatal — status check failure doesn't block auth
         setIsTelegramConnected(false);
         setTelegramPhone(null);
+      } finally {
+        setIsTelegramStatusLoading(false);
+        statusReqRef.current = null;
       }
-    } catch {
-      // Non-fatal — status check failure doesn't block auth
-      setIsTelegramConnected(false);
-      setTelegramPhone(null);
-    } finally {
-      setIsTelegramStatusLoading(false);
-    }
+    })();
+    return statusReqRef.current;
   };
 
   const refreshTelegramStatus = () => {
