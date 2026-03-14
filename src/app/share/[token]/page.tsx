@@ -791,21 +791,6 @@ export default function SharePage() {
           )}
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-[#202124] border-t border-white/10 py-4 flex-shrink-0">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <p className="text-sm text-white/30">
-            Shared via{" "}
-            <a
-              href="/"
-              className="text-white/50 hover:text-white/70 font-medium"
-            >
-              CloudVault
-            </a>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
