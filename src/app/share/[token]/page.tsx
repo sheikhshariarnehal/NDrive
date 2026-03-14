@@ -11,6 +11,7 @@ import { TextPreview } from "@/components/preview/text-preview";
 import { JsonPreview } from "@/components/preview/json-preview";
 import { PptxPreview } from "@/components/preview/pptx-preview";
 import { getFileCategory, formatFileSize, isOfficeFile, isCsvFile, isPptxFile, isJsonFile, isTextFile, isPreviewableFile, isLegacyPptFile } from "@/types/file.types";
+import { getFileUrl } from "@/lib/utils";
 import {
   Download,
   FileIcon,
@@ -281,13 +282,13 @@ function SharePreviewModal({
           {/* PowerPoint presentations (.pptx) */}
           {isPptxFile(file.mime_type, file.name) && (
             <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* Legacy PowerPoint (.ppt) */}
           {isLegacyPptFile(file.mime_type, file.name) && (
             <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* CSV files */}
@@ -511,13 +512,13 @@ export default function SharePage() {
           {/* PowerPoint presentations (.pptx) */}
           {isPptxFile(file.mime_type, file.name) && (
             <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* Legacy PowerPoint (.ppt) */}
           {isLegacyPptFile(file.mime_type, file.name) && (
             <div className="w-full h-full">
-              <PptxPreview src={previewUrl} fileName={file.name} />
+              <PptxPreview src={getFileUrl(file.id, file.name)} fileName={file.name} />
             </div>
           )}
           {/* CSV files */}
