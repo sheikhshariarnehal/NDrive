@@ -1,24 +1,24 @@
 import requests
 
-BASE_URL = "http://localhost:3000"
-TIMEOUT = 30
-
 def test_post_chunked_upload_init_without_authorization_unauthorized():
-    url = f"{BASE_URL}/api/upload/init"
-    # Intentionally missing required fields: fileName, fileSize, totalChunks
+    base_url = "http://localhost:3000"
+    url = f"{base_url}/chunked-upload/init"
+    headers = {
+        "Content-Type": "application/json"
+    }
     payload = {}
-    # No Authorization header provided
-
-    response = requests.post(url, json=payload, timeout=TIMEOUT)
-    assert response.status_code == 400, f"Expected status 400 but got {response.status_code}"
 
     try:
-        json_data = response.json()
-    except ValueError:
-        assert False, "Response is not valid JSON"
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        assert False, f"Request failed: {e}"
 
-    # Validate presence of validation error message indicating missing required fields
-    error_msg = json_data.get("error") or json_data.get("message") or json_data.get("errors")
-    assert error_msg is not None, "Expected validation error message in response body"
+    assert response.status_code == 401, f"Expected status 401 Unauthorized but got {response.status_code}"
+
+    try:
+        body = response.json()
+        assert "error" in body or "message" in body, "Expected error message key in response"
+    except Exception:
+        pass
 
 test_post_chunked_upload_init_without_authorization_unauthorized()

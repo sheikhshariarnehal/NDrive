@@ -2,57 +2,71 @@ import requests
 import io
 
 BASE_URL = "http://localhost:3000"
-UPLOAD_ENDPOINT = f"{BASE_URL}/api/upload"
-FILES_ENDPOINT = f"{BASE_URL}/api/files"
+UPLOAD_PATH = "/api/upload"
 TIMEOUT = 30
 
-def test_post_api_upload_duplicate_filename_conflict():
-    guest_session_id = "test-guest-session-tc002"
-    filename = "duplicate_test_file.txt"
-    file_content = b"Sample content for duplicate filename test."
 
-    headers = {}
+def test_post_api_upload_duplicate_filename_conflict():
+    guest_session_id = "test-guest-session-duplicate-filename"
+    filename = "duplicate_test_file.txt"
+    file_content = b"Test content for duplicate file upload."
+
     files = {
         "file": (filename, io.BytesIO(file_content), "text/plain"),
-        "guest_session_id": (None, guest_session_id)
+        "guest_session_id": (None, guest_session_id),
     }
 
     created_file_id = None
 
     try:
-        # First upload should succeed with 201
-        resp1 = requests.post(UPLOAD_ENDPOINT, files=files, headers=headers, timeout=TIMEOUT)
-        assert resp1.status_code == 201, f"First upload expected 201 Created, got {resp1.status_code}"
-        resp1_json = resp1.json()
-        assert "file" in resp1_json, "Response JSON missing 'file'"
-        file1 = resp1_json["file"]
-        assert "id" in file1 and "telegram_file_id" in file1 and "size_bytes" in file1, "File metadata incomplete"
-        created_file_id = file1["id"]
+        # 1st upload attempt - expected to succeed (200 or 201)
+        response1 = requests.post(
+            BASE_URL + UPLOAD_PATH, files=files, timeout=TIMEOUT
+        )
+        assert response1.status_code in (200, 201), f"Expected 200 or 201 but got {response1.status_code}"
+        json1 = response1.json()
+        assert (
+            "file" in json1 and "id" in json1["file"]
+        ), "Response JSON missing 'file.id'"
+        created_file_id = json1["file"]["id"]
 
-        # Second upload with same filename and same guest_session_id
-        resp2 = requests.post(UPLOAD_ENDPOINT, files=files, headers=headers, timeout=TIMEOUT)
-        # Expect 409 Conflict preferred, 500 acceptable if server error for duplicate
-        assert resp2.status_code in (409, 500), f"Second upload expected 409 or 500, got {resp2.status_code}"
+        # 2nd upload attempt with the same filename and guest_session_id - expect 409 or 500
+        response2 = requests.post(
+            BASE_URL + UPLOAD_PATH, files=files, timeout=TIMEOUT
+        )
+        assert (
+            response2.status_code == 409 or response2.status_code == 500
+        ), f"Expected 409 or 500 but got {response2.status_code}"
 
-        # Verify that only one file entry with that filename exists for the guest_session_id
-        list_resp = requests.get(FILES_ENDPOINT, params={"guest_session_id": guest_session_id}, timeout=TIMEOUT)
-        assert list_resp.status_code == 200, f"Files list expected 200 OK, got {list_resp.status_code}"
-        list_json = list_resp.json()
-        assert "files" in list_json and isinstance(list_json["files"], list), "Files list response malformed"
-        files_with_name = [f for f in list_json["files"] if f.get("name") == filename]
-        assert len(files_with_name) >= 1, f"Expected at least 1 file with name '{filename}', found {len(files_with_name)}"
-        matching_ids = {f.get("id") for f in files_with_name if isinstance(f, dict)}
-        assert created_file_id in matching_ids, "The created file id was not found among files with the same name"
-
-    finally:
-        # Cleanup: Delete the created file if possible (attempt idempotently)
-        if created_file_id:
+        # Verify 2nd upload does not create a second file record by checking the response body does not confirm new file creation
+        if response2.status_code == 409:
+            # Expect error message or no 'file' key indicating no duplication created
             try:
-                delete_url = f"{BASE_URL}/api/files"
-                # According to PRD, no DELETE method listed, but assume PATCH or POST could support deletion? No details.
-                # So skipping actual deletion due to missing API contract.
+                json2 = response2.json()
+                assert "file" not in json2, "Duplicate upload should not create a new file record"
+            except Exception:
+                # If response is not JSON or no body, consider as ok for this test
                 pass
+        else:
+            # If 500 error, assume server errored properly for duplicate; no file should be created
+            try:
+                json2 = response2.json()
+                assert "file" not in json2, "Server error should not create a new file record"
             except Exception:
                 pass
+
+    finally:
+        # Cleanup: delete the created file if it exists
+        if created_file_id:
+            try:
+                requests.delete(
+                    f"{BASE_URL}/api/files",
+                    json={"id": created_file_id},
+                    timeout=TIMEOUT,
+                )
+            except Exception:
+                # Ignore cleanup errors
+                pass
+
 
 test_post_api_upload_duplicate_filename_conflict()

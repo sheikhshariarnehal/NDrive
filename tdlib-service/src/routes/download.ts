@@ -44,6 +44,15 @@ interface CacheEntry {
   isAppManaged: boolean;  // true → we may delete this file from disk
 }
 
+interface PersistedCacheEntry {
+  remoteFileId: string;
+  localPath: string;
+  fileSize: number;
+  lastAccessedAt: number;
+  createdAt: number;
+  isAppManaged: boolean;
+}
+
 const fileCache = new Map<string, CacheEntry>();
 
 // DigitalOcean 1 GB RAM droplet defaults — set env vars to override
@@ -53,6 +62,153 @@ const CACHE_TTL_MS =
   parseFloat(process.env.CACHE_TTL_HOURS || "6") * 60 * 60 * 1000;
 const MAX_MAP_ENTRIES = 500;             // ~150 KB RAM for the Map itself
 const CACHE_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // sweep every 5 minutes
+
+function getFilesBasePath(): string {
+  const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
+  return path.isAbsolute(rawFilesPath)
+    ? rawFilesPath
+    : path.join(process.cwd(), rawFilesPath);
+}
+
+function getTempDirPath(): string {
+  return path.join(getFilesBasePath(), "temp");
+}
+
+function getCacheIndexPath(): string {
+  return path.join(getTempDirPath(), "cache-index.json");
+}
+
+let cacheIndexDirty = false;
+let cacheIndexSaveTimer: NodeJS.Timeout | null = null;
+
+function markCacheIndexDirty(): void {
+  cacheIndexDirty = true;
+  if (cacheIndexSaveTimer) return;
+  cacheIndexSaveTimer = setTimeout(() => {
+    cacheIndexSaveTimer = null;
+    if (!cacheIndexDirty) return;
+    cacheIndexDirty = false;
+    saveCacheIndex();
+  }, 2000);
+  cacheIndexSaveTimer.unref();
+}
+
+function saveCacheIndex(): void {
+  try {
+    const tempDir = getTempDirPath();
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const entries: PersistedCacheEntry[] = [];
+    for (const [remoteFileId, entry] of fileCache.entries()) {
+      entries.push({
+        remoteFileId,
+        localPath: entry.localPath,
+        fileSize: entry.fileSize,
+        lastAccessedAt: entry.lastAccessedAt,
+        createdAt: entry.createdAt,
+        isAppManaged: entry.isAppManaged,
+      });
+    }
+
+    fs.writeFileSync(
+      getCacheIndexPath(),
+      JSON.stringify({ savedAt: Date.now(), entries }),
+      "utf8",
+    );
+  } catch (err) {
+    console.warn("[Cache] Failed to save cache index:", err instanceof Error ? err.message : err);
+  }
+}
+
+function loadCacheIndex(): void {
+  try {
+    const indexPath = getCacheIndexPath();
+    if (!fs.existsSync(indexPath)) return;
+
+    const raw = fs.readFileSync(indexPath, "utf8");
+    const parsed = JSON.parse(raw) as { entries?: PersistedCacheEntry[] };
+    const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+    let restored = 0;
+
+    for (const item of entries) {
+      if (!item?.remoteFileId || !item.localPath) continue;
+      if (!fs.existsSync(item.localPath)) continue;
+
+      fileCache.set(item.remoteFileId, {
+        localPath: item.localPath,
+        fileSize: item.fileSize || 0,
+        lastAccessedAt: item.lastAccessedAt || Date.now(),
+        createdAt: item.createdAt || Date.now(),
+        isAppManaged: !!item.isAppManaged,
+      });
+      restored++;
+    }
+
+    if (restored > 0) {
+      console.log(`[Cache] Restored ${restored} entries from cache-index.json`);
+    }
+  } catch (err) {
+    console.warn("[Cache] Failed to load cache index:", err instanceof Error ? err.message : err);
+  }
+}
+
+function cleanupOrphanTempFiles(now: number, appManagedTrackedBytes: number): void {
+  const tempDir = getTempDirPath();
+  if (!fs.existsSync(tempDir)) return;
+
+  const trackedAppManagedPaths = new Set(
+    [...fileCache.values()]
+      .filter((entry) => entry.isAppManaged)
+      .map((entry) => path.normalize(entry.localPath)),
+  );
+
+  const orphanFiles: Array<{ fullPath: string; size: number; mtimeMs: number }> = [];
+  for (const name of fs.readdirSync(tempDir)) {
+    if (!name.startsWith("botapi_")) continue;
+    const fullPath = path.join(tempDir, name);
+    const normalized = path.normalize(fullPath);
+    if (trackedAppManagedPaths.has(normalized)) continue;
+
+    try {
+      const stat = fs.statSync(fullPath);
+      if (!stat.isFile()) continue;
+      orphanFiles.push({ fullPath, size: stat.size, mtimeMs: stat.mtimeMs });
+    } catch {
+      // ignore transient files
+    }
+  }
+
+  let orphanBytes = orphanFiles.reduce((sum, f) => sum + f.size, 0);
+
+  // TTL cleanup for orphan files
+  for (const file of orphanFiles) {
+    if (now - file.mtimeMs <= CACHE_TTL_MS) continue;
+    try {
+      fs.unlinkSync(file.fullPath);
+      orphanBytes -= file.size;
+      console.log(`[Cache] Orphan TTL evict: ${file.fullPath}`);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Size cleanup for orphan files if tracked + orphan exceeds cap
+  let totalAppManagedBytes = appManagedTrackedBytes + orphanBytes;
+  if (totalAppManagedBytes > CACHE_MAX_BYTES) {
+    const sortedByOldest = orphanFiles.sort((a, b) => a.mtimeMs - b.mtimeMs);
+    for (const file of sortedByOldest) {
+      if (totalAppManagedBytes <= CACHE_MAX_BYTES) break;
+      try {
+        if (!fs.existsSync(file.fullPath)) continue;
+        fs.unlinkSync(file.fullPath);
+        totalAppManagedBytes -= file.size;
+        console.log(`[Cache] Orphan size evict: ${file.fullPath}`);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
 
 /** True if this path was written by us (Bot API / forward-refresh downloads). */
 function isAppManagedPath(p: string): boolean {
@@ -66,6 +222,7 @@ function getCachedPath(remoteFileId: string): string | null {
   if (!entry) return null;
   if (fs.existsSync(entry.localPath)) {
     entry.lastAccessedAt = Date.now(); // LRU touch
+    markCacheIndexDirty();
     return entry.localPath;
   }
   // File deleted externally — evict stale entry
@@ -85,6 +242,8 @@ function cacheFile(remoteFileId: string, localPath: string): void {
     createdAt: Date.now(),
     isAppManaged: isAppManagedPath(localPath),
   });
+
+  markCacheIndexDirty();
 }
 
 /** Evict a single cache entry, deleting app-managed files from disk. */
@@ -95,6 +254,8 @@ function evictEntry(remoteFileId: string, entry: CacheEntry): void {
       if (fs.existsSync(entry.localPath)) fs.unlinkSync(entry.localPath);
     } catch { /* best effort */ }
   }
+
+  markCacheIndexDirty();
 }
 
 /** Periodic sweep: TTL expiry → size cap → Map size cap. */
@@ -140,14 +301,59 @@ function runCacheSweep(): void {
     }
   }
 
+  cleanupOrphanTempFiles(now, appManagedBytes);
+
   const totalEntries = fileCache.size;
   const appMB = Math.round(appManagedBytes / 1024 / 1024);
   if (totalEntries > 0) {
     console.log(`[Cache] Sweep done — entries: ${totalEntries}, app-managed disk: ${appMB} MB`);
   }
+
+  markCacheIndexDirty();
 }
 
 // Start the periodic sweep
+
+export function getCacheStats() {
+  let appManagedBytes = 0;
+  const entries: any[] = [];
+  for (const [id, entry] of fileCache.entries()) {
+    if (entry.isAppManaged) appManagedBytes += entry.fileSize;
+    entries.push({
+      id: id.substring(0, 8) + '...',
+      size: entry.fileSize,
+      isAppManaged: entry.isAppManaged,
+      lastAccessed: entry.lastAccessedAt
+    });
+  }
+  return {
+    totalEntries: fileCache.size,
+    appManagedBytes,
+    maxBytes: CACHE_MAX_BYTES,
+    entries: entries.sort((a, b) => b.lastAccessed - a.lastAccessed)
+  };
+}
+
+export function clearCache() {
+  let clearedBytes = 0;
+  let clearedCount = 0;
+  for (const [id, entry] of fileCache) {
+    if (entry.isAppManaged) {
+      try {
+        if (fs.existsSync(entry.localPath)) {
+          fs.unlinkSync(entry.localPath);
+          clearedBytes += entry.fileSize;
+          clearedCount++;
+        }
+      } catch (err) { /* ignore */ }
+    }
+    fileCache.delete(id);
+  }
+  console.log(`[Cache] Admin triggered clear. Removed ${clearedCount} app-managed files (${Math.round(clearedBytes / 1024 / 1024)} MB).`);
+  markCacheIndexDirty();
+  return { clearedCount, clearedBytes };
+}
+loadCacheIndex();
 setInterval(runCacheSweep, CACHE_SWEEP_INTERVAL_MS).unref();
 
 /** Log disk usage of the tdlib-files directory (best-effort, non-blocking). */

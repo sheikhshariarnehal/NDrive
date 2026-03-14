@@ -1,34 +1,36 @@
 import requests
-from requests.exceptions import RequestException
-
-BASE_URL = "http://localhost:3000"
-TIMEOUT = 30
-
+import io
 
 def test_post_api_upload_file_upload_success():
-    url = f"{BASE_URL}/api/upload"
-    guest_session_id = "guest-session-test-12345"
-    # Prepare file content and multipart data
-    file_content = b"Test file content for upload success"
+    base_url = "http://localhost:3000"
+    endpoint = "/api/upload"
+    url = base_url + endpoint
+    timeout = 30
+    guest_session_id = "guest-session-test-123"
+
+    # Prepare a small in-memory file to upload
+    file_content = b"Hello, this is a test file for upload."
+    file_name = "test_upload_file.txt"
     files = {
-        "file": ("testfile.txt", file_content, "text/plain"),
+        'file': (file_name, io.BytesIO(file_content), 'text/plain')
     }
     data = {
-        "guest_session_id": guest_session_id,
+        'guest_session_id': guest_session_id
     }
 
     try:
-        response = requests.post(url, data=data, files=files, timeout=TIMEOUT)
+        response = requests.post(url, files=files, data=data, timeout=timeout)
         assert response.status_code == 201, f"Expected status 201, got {response.status_code}"
-        json_resp = response.json()
-        assert "file" in json_resp, "Response JSON missing 'file' key"
-        file_meta = json_resp["file"]
-        assert isinstance(file_meta, dict), "'file' should be a dict"
-        assert "id" in file_meta and file_meta["id"], "'id' missing or empty in file metadata"
-        assert "telegram_file_id" in file_meta and file_meta["telegram_file_id"], "'telegram_file_id' missing or empty"
-        assert "size_bytes" in file_meta and isinstance(file_meta["size_bytes"], int), "'size_bytes' missing or not int"
-    except RequestException as e:
-        assert False, f"RequestException during upload: {e}"
-
+        resp_json = response.json()
+        assert 'file' in resp_json, "Response JSON missing 'file' key"
+        file_obj = resp_json['file']
+        assert isinstance(file_obj, dict), "'file' key should be a dictionary"
+        # Validate required keys in file object
+        for key in ('id', 'telegram_file_id', 'size_bytes'):
+            assert key in file_obj, f"Missing key '{key}' in file object"
+        # Validate size_bytes approximately matches upload size
+        assert file_obj['size_bytes'] == len(file_content), "size_bytes does not match uploaded file size"
+    except requests.RequestException as e:
+        assert False, f"Request failed: {e}"
 
 test_post_api_upload_file_upload_success()

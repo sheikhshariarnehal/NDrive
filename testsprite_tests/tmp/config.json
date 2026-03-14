@@ -6,14 +6,14 @@
   "backendAuthType": "public",
   "executionArgs": {
     "projectName": "cloudvault",
-    "projectPath": "e:\\Poject\\cloudvault",
+    "projectPath": "E:\\Poject\\cloudvault",
     "testIds": [],
-    "additionalInstruction": "Regenerate tests strictly from testsprite_tests/testsprite_backend_test_plan.json. Hard rules: (1) /api/upload create assertions MUST use 201 and response shape { file: ... }; never assert 200 for successful create. (2) On localhost:3000 chunked flow MUST use only /api/upload/init, /api/upload/chunk, /api/upload/complete; NEVER use /chunked-upload/* on port 3000. (3) For /api/upload/chunk multipart fields MUST include chunk + uploadId + chunkIndex. (4) /api/upload/complete body MUST use uploadId and return assertion MUST be 201 with { file: { id, telegram_file_id, size_bytes } }. (5) /api/files guest listing MUST pass guest_session_id query and assert { files: [...] }. (6) /file public tests MUST use token=base64url(UUID bytes) and treat valid-token behavior as redirect or range 206 according to case. (7) PATCH /api/files assertions MUST read response shape { file: ... }.",
+    "additionalInstruction": "Run visual frontend tests. Both frontend (localhost:3000) and backend (localhost:3001) are already running.",
     "serverMode": "development",
     "envs": {
       "API_KEY": "sk-user-FEwPnzYiSLsoMQFGm-lCEJJisgt_rAUEDpcrxNxb0JTmQ3DelIUP9AFti5qeYCY5CqcES9JDREkDAzi258Ucc4epafeDz6Z2RWttB4KvwfhAfMORobWr6iK6R6YJ-8UmS8Y"
     }
   },
-  "serverPort": 58255,
-  "proxy": "http://8050e65f-4a27-4aa3-9031-fabb73ba84dd:LyDn4HU6pobWPTC13yePitMFKy2ErgQU@tun.testsprite.com:8080"
+  "serverPort": 60891,
+  "proxy": "http://ad24d427-90e2-42ef-89c0-1a0e5ab8f584:3rqvkylKijPLf0xgIimNqwgGuSNwaEuy@tun.testsprite.com:8080"
 }

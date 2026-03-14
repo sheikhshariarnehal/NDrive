@@ -7,6 +7,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "..", ".env") });
 
 import express from "express";
+import { initLogger } from "./utils/logger.js";
+initLogger(); // Initialize log interception
+
 import { authMiddleware } from "./middleware/auth.js";
 import { signedUrlAuth } from "./middleware/signed-url-auth.js";
 import { sessionManager } from "./session-manager.js";
@@ -17,6 +20,7 @@ import downloadRouter, { logDiskStats } from "./routes/download.js";
 import thumbnailRouter from "./routes/thumbnail.js";
 import deleteRouter from "./routes/delete.js";
 import telegramAuthRouter from "./routes/telegram-auth.js";
+import adminRouter from "./routes/admin.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -76,6 +80,11 @@ app.use("/api/download", authMiddleware, downloadRouter);
 app.use("/api/thumbnail", authMiddleware, thumbnailRouter);
 app.use("/api/message", authMiddleware, deleteRouter);
 app.use("/api/telegram", authMiddleware, telegramAuthRouter);
+app.use("/api/admin", authMiddleware, adminRouter);
+
+// ─── Static Admin Dashboard ──────────────────────────────────────────
+// Requires users to supply the TDLIB_SERVICE_API_KEY inside the page UI
+app.use("/admin", express.static(join(__dirname, "..", "public", "admin")));
 
 // ─── Public signed-URL download route ────────────────────────────────
 // Browser fetches files directly via signed short-lived tokens.
