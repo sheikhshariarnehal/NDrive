@@ -232,6 +232,19 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
   const CHUNK_SIZE = 10 * 1024 * 1024;     // actual slice size per chunk
   const PARALLEL_CHUNKS = 5;
 
+  const resolvePromiseSafely = async <T,>(
+    promise: Promise<T>,
+    fallback: T,
+    label: string,
+  ): Promise<T> => {
+    try {
+      return await promise;
+    } catch (err) {
+      console.warn(`[Upload] ${label} failed, using fallback:`, err);
+      return fallback;
+    }
+  };
+
   /**
    * Chunked upload for large files (> CHUNK_SIZE).
    * 1. POST /api/upload/init        → get uploadId + direct chunkEndpoint
@@ -242,8 +255,8 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     queueId: string,
     file: File,
     targetFolderId: string | null,
-    fileHash: string | null,
-    thumbnailBase64?: string | null,
+    fileHashPromise: Promise<string | null>,
+    thumbnailPromise: Promise<string | null>,
   ) => {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -271,8 +284,6 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     // Track per-chunk byte progress for smooth UI updates
     const chunkBytesLoaded = new Array(totalChunks).fill(0);
     const chunkBytesTotal = new Array(totalChunks).fill(0);
-    let completedChunks = 0;
-
     const updateChunkProgress = () => {
       const loaded = chunkBytesLoaded.reduce((a, b) => a + b, 0);
       const total = file.size;
@@ -313,7 +324,6 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             chunkBytesLoaded[i] = chunkBytesTotal[i];
-            completedChunks++;
             updateChunkProgress();
             resolve();
           } else {
@@ -331,39 +341,28 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       });
     };
 
-    // Process in parallel batches
-    for (let i = 0; i < totalChunks; i += PARALLEL_CHUNKS) {
-      const batch = [];
-      for (let j = i; j < Math.min(i + PARALLEL_CHUNKS, totalChunks); j++) {
-        batch.push(uploadSingleChunk(j));
+    // Rolling worker pool avoids head-of-line stalls from fixed batches.
+    let nextChunkIndex = 0;
+    const workerCount = Math.min(PARALLEL_CHUNKS, totalChunks);
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const chunkIndex = nextChunkIndex;
+        nextChunkIndex += 1;
+        if (chunkIndex >= totalChunks) return;
+        await uploadSingleChunk(chunkIndex);
       }
-      await Promise.all(batch);
-    }
+    });
+    await Promise.all(workers);
 
-    // 3. Complete: upload to Telegram + DB insert (through Vercel)
-    // Poll TDLib for Telegram upload progress (80% → 98%)
+    // 3. Complete async: start Telegram upload job, poll status, finalize DB insert.
     updateUploadProgress(queueId, 82);
 
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-    const pollProgress = async () => {
-      try {
-        const statusUrl = chunkEndpoint.replace("/chunk", `/status?uploadId=${uploadId}`);
-        const statusRes = await fetch(statusUrl);
-        if (statusRes.ok) {
-          const status = await statusRes.json();
-          if (status.telegramProgress != null) {
-            // Telegram upload phase: 82% → 98%
-            const pct = 82 + Math.round(status.telegramProgress * 16);
-            updateUploadProgress(queueId, Math.min(pct, 98));
-          }
-        }
-      } catch {
-        // ignore poll errors
-      }
-    };
-    pollTimer = setInterval(pollProgress, 2000);
+    const [resolvedHash, resolvedThumbnail] = await Promise.all([
+      resolvePromiseSafely(fileHashPromise, null, "Hash computation"),
+      resolvePromiseSafely(thumbnailPromise, null, "Thumbnail generation"),
+    ]);
 
-    const completeRes = await fetch("/api/upload/complete", {
+    const completeStartRes = await fetch("/api/upload/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -374,26 +373,97 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
         userId: user?.id || null,
         guestSessionId: guestSessionId || null,
         folderId: targetFolderId,
-        fileHash: fileHash || null,
-        thumbnail: thumbnailBase64 || null,
+        fileHash: resolvedHash || null,
+        thumbnail: resolvedThumbnail || null,
+        async: true,
       }),
     });
 
-    if (!completeRes.ok) {
-      if (pollTimer) clearInterval(pollTimer);
-      const errData = await completeRes.json().catch(() => ({}));
-      if (completeRes.status === 429) {
+    if (!completeStartRes.ok) {
+      const errData = await completeStartRes.json().catch(() => ({}));
+      if (completeStartRes.status === 429) {
         const retryAfter = errData.retry_after ?? 30;
         const err = new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
         (err as any).retryAfter = retryAfter;
         (err as any).isRateLimit = true;
         throw err;
       }
-      throw new Error(errData.error || `Complete failed with status ${completeRes.status}`);
+      throw new Error(errData.error || `Complete start failed with status ${completeStartRes.status}`);
     }
 
-    if (pollTimer) clearInterval(pollTimer);
-    const data = await completeRes.json();
+    const completeStartData = await completeStartRes.json();
+    const jobId: string | undefined = completeStartData.jobId;
+    if (!jobId) {
+      throw new Error("Complete start did not return jobId");
+    }
+
+    let attempts = 0;
+    const maxAttempts = 720; // 24 minutes at 2s interval
+    while (attempts < maxAttempts) {
+      attempts++;
+      await new Promise((r) => setTimeout(r, 2000));
+
+      const statusRes = await fetch(`/api/upload/complete/status?jobId=${encodeURIComponent(jobId)}`);
+      const status = await statusRes.json().catch(() => ({}));
+
+      if (!statusRes.ok) {
+        if (statusRes.status === 429) {
+          const retryAfter = status.retry_after ?? 30;
+          const err = new Error(status.error || `Rate limited. Retry after ${retryAfter}s`);
+          (err as any).retryAfter = retryAfter;
+          (err as any).isRateLimit = true;
+          throw err;
+        }
+        continue;
+      }
+
+      if (status.telegramProgress != null) {
+        const pct = 82 + Math.round(status.telegramProgress * 16);
+        updateUploadProgress(queueId, Math.min(pct, 98));
+      }
+
+      if (status.state === "failed") {
+        throw new Error(status.error || "Telegram upload failed");
+      }
+
+      if (status.state === "success") {
+        break;
+      }
+    }
+
+    if (attempts >= maxAttempts) {
+      throw new Error("Timed out waiting for Telegram upload completion");
+    }
+
+    const finalizeRes = await fetch("/api/upload/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jobId,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || "application/octet-stream",
+        userId: user?.id || null,
+        guestSessionId: guestSessionId || null,
+        folderId: targetFolderId,
+        fileHash: resolvedHash || null,
+        thumbnail: resolvedThumbnail || null,
+      }),
+    });
+
+    if (!finalizeRes.ok) {
+      const errData = await finalizeRes.json().catch(() => ({}));
+      if (finalizeRes.status === 429) {
+        const retryAfter = errData.retry_after ?? 30;
+        const err = new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
+        (err as any).retryAfter = retryAfter;
+        (err as any).isRateLimit = true;
+        throw err;
+      }
+      throw new Error(errData.error || `Finalize failed with status ${finalizeRes.status}`);
+    }
+
+    const data = await finalizeRes.json();
     updateUploadProgress(queueId, 100);
     return data;
   }, [user, guestSessionId, updateUploadProgress, updateUploadBytes, CHUNK_SIZE]);
@@ -413,17 +483,25 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
 
     updateUploadStatus(queueId, "uploading");
 
-    // ── Compute content fingerprint for dedup (works for ALL file sizes) ──
-    let fileHash: string | null = null;
-    try {
-      updateUploadProgress(queueId, 2);
-      console.log(`[Upload] Computing hash for ${file.name} (${Math.round(file.size / 1024 / 1024)} MB)`);
-      fileHash = await computeFileHash(file);
-      console.log(`[Upload] Hash: ${fileHash?.slice(0, 20)}...`);
-      updateUploadProgress(queueId, 4);
-    } catch (hashErr) {
-      console.warn("[Upload] Hash computation failed, skipping hash:", hashErr);
-    }
+    // Start content hash immediately, but do not block upload start.
+    updateUploadProgress(queueId, 2);
+    console.log(`[Upload] Scheduling hash for ${file.name} (${Math.round(file.size / 1024 / 1024)} MB)`);
+    const fileHashPromise = computeFileHash(file)
+      .then((hash) => {
+        console.log(`[Upload] Hash: ${hash?.slice(0, 20)}...`);
+        return hash;
+      })
+      .catch((hashErr) => {
+        console.warn("[Upload] Hash computation failed, skipping hash:", hashErr);
+        return null;
+      });
+    updateUploadProgress(queueId, 4);
+
+    // Wait for hash only for dedup pre-check on small files where hash is cheap.
+    const shouldAwaitHashForDedup = file.size <= CHUNK_THRESHOLD;
+    const fileHash = shouldAwaitHashForDedup
+      ? await resolvePromiseSafely(fileHashPromise, null, "Hash before dedup")
+      : null;
 
     // ── Dedup check: skip upload if same-name OR same-hash file exists ──
     try {
@@ -511,29 +589,35 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       chunked: file.size > CHUNK_THRESHOLD,
     });
 
-    // ── Generate thumbnail client-side for videos and images (non-blocking, 5s timeout) ──
-    let thumbnailBase64: string | null = null;
-    if (file.type.startsWith("video/") || file.type.startsWith("image/")) {
+    // Start thumbnail generation in parallel with upload.
+    const thumbnailPromise: Promise<string | null> = (async () => {
+      if (!file.type.startsWith("video/") && !file.type.startsWith("image/")) {
+        return null;
+      }
+
       try {
-        const thumbnailPromise = file.type.startsWith("video/")
+        const rawThumbnailPromise = file.type.startsWith("video/")
           ? extractVideoThumbnail(file)
           : extractImageThumbnail(file);
 
         const thumbnailBlob = await Promise.race([
-          thumbnailPromise,
+          rawThumbnailPromise,
           new Promise<null>((r) => setTimeout(() => r(null), 5000)),
         ]);
-        if (thumbnailBlob) {
-          const buf = await thumbnailBlob.arrayBuffer();
-          thumbnailBase64 = btoa(
-            new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""),
-          );
-          console.log(`[Upload] Client thumbnail generated for ${file.name} (${thumbnailBlob.size} bytes)`);
-        }
+
+        if (!thumbnailBlob) return null;
+
+        const buf = await thumbnailBlob.arrayBuffer();
+        const thumbnailBase64 = btoa(
+          new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""),
+        );
+        console.log(`[Upload] Client thumbnail generated for ${file.name} (${thumbnailBlob.size} bytes)`);
+        return thumbnailBase64;
       } catch (thumbErr) {
         console.warn("[Upload] Client thumbnail generation failed:", thumbErr);
+        return null;
       }
-    }
+    })();
 
     // Carries Telegram rate-limit info through the error chain
     class RateLimitError extends Error {
@@ -550,11 +634,22 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       try {
         // ── Use chunked upload for files larger than 4 MB (bypasses Vercel) ──
         if (file.size > CHUNK_THRESHOLD) {
-          const data = await uploadFileChunked(queueId, file, targetFolderId, fileHash, thumbnailBase64);
+          const data = await uploadFileChunked(
+            queueId,
+            file,
+            targetFolderId,
+            fileHashPromise,
+            thumbnailPromise,
+          );
           addFile(data.file);
           updateUploadStatus(queueId, "success");
           return;
         }
+
+        const [resolvedHash, resolvedThumbnail] = await Promise.all([
+          resolvePromiseSafely(fileHashPromise, null, "Hash for small upload"),
+          resolvePromiseSafely(thumbnailPromise, null, "Thumbnail for small upload"),
+        ]);
 
         // ── Small file: single-request upload (original path) ───────────
         const uploadData = new FormData();
@@ -562,8 +657,8 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
         if (targetFolderId) uploadData.append("folder_id", targetFolderId);
         if (user?.id) uploadData.append("user_id", user.id);
         if (guestSessionId) uploadData.append("guest_session_id", guestSessionId);
-        if (fileHash) uploadData.append("file_hash", fileHash);
-        if (thumbnailBase64) uploadData.append("thumbnail", thumbnailBase64);
+        if (resolvedHash) uploadData.append("file_hash", resolvedHash);
+        if (resolvedThumbnail) uploadData.append("thumbnail", resolvedThumbnail);
 
         if (attempt === 1) {
           // First attempt: use XHR for progress tracking

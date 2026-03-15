@@ -16,7 +16,18 @@ export const maxDuration = 300; // 5 minutes — Telegram upload can be slow for
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uploadId, fileName, fileSize, mimeType, userId, guestSessionId, folderId, fileHash, thumbnail: clientThumbnail } = body;
+    const {
+      uploadId,
+      fileName,
+      fileSize,
+      mimeType,
+      userId,
+      guestSessionId,
+      folderId,
+      fileHash,
+      thumbnail: clientThumbnail,
+      async: asyncMode,
+    } = body;
 
     if (!uploadId) {
       return NextResponse.json({ error: "Missing uploadId" }, { status: 400 });
@@ -27,6 +38,21 @@ export async function POST(request: NextRequest) {
         { error: "User ID or Guest Session ID required" },
         { status: 400 }
       );
+    }
+
+    // Async mode: start Telegram upload job and return quickly.
+    if (asyncMode) {
+      const startRes = await fetch(`${BACKEND_URL}/api/chunked-upload/complete-start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": API_KEY,
+        },
+        body: JSON.stringify({ uploadId }),
+      });
+
+      const startData = await startRes.json().catch(() => ({}));
+      return NextResponse.json(startData, { status: startRes.status });
     }
 
     // Tell TDLib service to assemble and upload
@@ -89,12 +115,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate thumbnail for image/video files (non-fatal)
-    await resolveUploadThumbnail(supabase, fileRecord, {
+    // Generate thumbnail in background (non-fatal)
+    void resolveUploadThumbnail(supabase, fileRecord, {
       storageType: telegramResult.storage_type || "bot",
       userId,
       clientThumbnail,
       logLabel: fileName,
+    }).catch((thumbErr) => {
+      console.warn("[upload/complete] Background thumbnail generation failed:", thumbErr);
     });
 
     // If the backend detected that the user's Telegram session expired,
