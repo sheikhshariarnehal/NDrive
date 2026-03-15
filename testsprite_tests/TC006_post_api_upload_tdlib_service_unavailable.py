@@ -1,29 +1,29 @@
 import requests
 
-def test_post_api_upload_without_file_should_return_400():
-    base_url = "http://localhost:3000"
-    url = f"{base_url}/api/upload"
+BASE_URL = "http://localhost:3000"
+TIMEOUT = 30
 
-    # Send POST request without any file
+def test_post_api_upload_tdlib_service_unavailable():
+    url = f"{BASE_URL}/api/upload"
+    headers = {
+        # No Authorization or guest_session_id as per description
+    }
+    # No file sent to test validation error branch
     try:
-        response = requests.post(url, files={}, timeout=30)
+        response = requests.post(url, headers=headers, timeout=TIMEOUT)
     except requests.RequestException as e:
-        assert False, f"Request failed: {e}"
+        assert False, f"Request to {url} failed with exception: {e}"
 
-    # Validate status code is 400 Bad Request for validation error
-    assert response.status_code == 400, f"Expected status 400, got {response.status_code}"
+    # Validate status code 400 for missing file (validation error)
+    assert response.status_code == 400, f"Expected HTTP 400, got {response.status_code}"
 
-    # Validate response body contains clear validation error message
-    # Assuming response is JSON and contains an 'error' or similar field
+    # Validate error message presence (assumed JSON with 'error' key or similar validation message)
     try:
         json_data = response.json()
     except ValueError:
-        assert False, "Response is not valid JSON"
+        assert False, f"Response is not JSON: {response.text}"
 
-    # Check presence of validation error or meaningful message
-    # Accept keys like 'error', 'message', or similar
-    error_fields = ['error', 'message', 'detail', 'validationError']
-    has_error_message = any(field in json_data and json_data[field] for field in error_fields)
-    assert has_error_message, f"Response JSON does not contain validation error message. Response: {json_data}"
+    # Check for clear validation error indication
+    assert "error" in json_data or "message" in json_data, "Response JSON must contain error or message field indicating validation error"
 
-test_post_api_upload_without_file_should_return_400()
+test_post_api_upload_tdlib_service_unavailable()

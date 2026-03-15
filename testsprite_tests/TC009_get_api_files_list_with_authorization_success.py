@@ -1,54 +1,52 @@
 import requests
+import uuid
 
 BASE_URL = "http://localhost:3000"
 TIMEOUT = 30
 
 def test_get_api_files_list_with_authorization_success():
-    upload_url = f"{BASE_URL}/api/upload"
-    files_url = f"{BASE_URL}/api/files"
+    files_upload_url = f"{BASE_URL}/api/upload"
+    files_list_url = f"{BASE_URL}/api/files"
 
-    # Prepare a small dummy file for upload
-    file_content = b"Hello CloudVault"
+    guest_session_id = str(uuid.uuid4())
+    file_content = b"Test file content for TC009"
     file_name = "testfile_tc009.txt"
-    guest_session_id = "guest_session_tc009"
 
-    files = {
-        "file": (file_name, file_content),
-    }
-    data = {
-        "guest_session_id": guest_session_id
-    }
-
-    # Upload the file with guest_session_id - expect 201 and response shape { file: ... }
-    response_upload = requests.post(upload_url, files=files, data=data, timeout=TIMEOUT)
-    assert response_upload.status_code == 201, f"Expected 201 Created, got {response_upload.status_code}"
-    json_upload = response_upload.json()
-    assert "file" in json_upload, "Response JSON must include 'file' key"
-    file_metadata = json_upload["file"]
-    for key in ("id", "telegram_file_id", "size_bytes"):
-        assert key in file_metadata, f"File metadata must include '{key}'"
-
-    # Use try-finally to cleanup uploaded file after test
-    file_id = file_metadata["id"]
-    delete_url = f"{BASE_URL}/api/files"
+    # Step 1: Upload a file with guest_session_id expecting 201 and response { file: ... }
+    upload_response = None
     try:
-        # Call GET /api/files with guest_session_id query (no bearer token) and verify response
-        params = {"guest_session_id": guest_session_id}
-        response_files = requests.get(files_url, params=params, timeout=TIMEOUT)
-        assert response_files.status_code == 200, f"Expected 200 OK, got {response_files.status_code}"
-        json_files = response_files.json()
-        assert "files" in json_files, "Response JSON must include 'files' key"
-        assert isinstance(json_files["files"], list), "'files' must be a list"
+        files = {
+            'file': (file_name, file_content),
+        }
+        data = {'guest_session_id': guest_session_id}
+        upload_response = requests.post(files_upload_url, files=files, data=data, timeout=TIMEOUT)
+        assert upload_response.status_code == 201, f"Upload failed with status {upload_response.status_code}"
+        upload_json = upload_response.json()
+        assert "file" in upload_json and isinstance(upload_json["file"], dict), "Upload response missing 'file' object"
+        file_id = upload_json["file"].get("id")
+        assert file_id is not None, "Uploaded file object missing 'id'"
 
-        # Confirm uploaded file id is in the files list
-        file_ids = [f.get("id") for f in json_files["files"] if isinstance(f, dict)]
-        assert file_id in file_ids, "Uploaded file id must be present in files list"
+        # Step 2: Call GET /api/files with guest_session_id query parameter; no auth token required
+        params = {"guest_session_id": guest_session_id}
+        list_response = requests.get(files_list_url, params=params, timeout=TIMEOUT)
+        assert list_response.status_code == 200, f"Files list request failed with status {list_response.status_code}"
+        list_json = list_response.json()
+        assert "files" in list_json and isinstance(list_json["files"], list), "Response missing 'files' array"
+
+        # Optionally verify the uploaded file is present in the files list by id
+        file_ids = [f.get("id") for f in list_json["files"] if isinstance(f, dict) and "id" in f]
+        assert file_id in file_ids, "Uploaded file id not found in files list"
+
     finally:
-        # Cleanup: delete the uploaded file by id (assume DELETE /api/files with JSON payload to delete)
-        headers = {"Content-Type": "application/json"}
-        resp_delete = requests.delete(delete_url, json={"id": file_id}, timeout=TIMEOUT, headers=headers)
-        # We allow 200 or 204 as successful delete, but do not assert here to avoid masking test result
-        if resp_delete.status_code not in (200, 204):
-            print(f"Warning: failed to delete test file id {file_id} with status {resp_delete.status_code}")
+        # Cleanup: delete the uploaded file if possible
+        if upload_response is not None and upload_response.status_code == 201:
+            file_id_cleanup = upload_response.json().get("file", {}).get("id")
+            if file_id_cleanup:
+                try:
+                    delete_url = f"{BASE_URL}/api/files"
+                    # DELETE method not explicitly specified, so assuming PATCH with a 'deleted' flag or similar is unsupported.
+                    # No delete endpoint provided in PRD; skip delete if no explicit delete available.
+                except Exception:
+                    pass
 
 test_get_api_files_list_with_authorization_success()

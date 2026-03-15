@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { sessionManager } from "../session-manager.js";
-import { streamFileToResponse } from "../utils/stream.js";
+import { streamFileToResponse, streamFileProgressively } from "../utils/stream.js";
 
 const router = Router();
 
@@ -62,6 +62,13 @@ const CACHE_TTL_MS =
   parseFloat(process.env.CACHE_TTL_HOURS || "6") * 60 * 60 * 1000;
 const MAX_MAP_ENTRIES = 500;             // ~150 KB RAM for the Map itself
 const CACHE_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // sweep every 5 minutes
+
+const MB = 1024 * 1024;
+const TDLIB_DOWNLOAD_PRIORITY = parseInt(process.env.TDLIB_DOWNLOAD_PRIORITY || "32", 10);
+const PROGRESSIVE_THRESHOLD_BYTES =
+  parseInt(process.env.DOWNLOAD_PROGRESSIVE_THRESHOLD_MB || "64", 10) * MB;
+const ENABLE_PROGRESSIVE_FOR_LARGE =
+  process.env.DOWNLOAD_PROGRESSIVE_FOR_LARGE !== "false";
 
 function getFilesBasePath(): string {
   const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
@@ -570,6 +577,8 @@ router.get(
   "/:remoteFileId",
   async (req: Request, res: Response) => {
     const { remoteFileId } = req.params;
+    const requestStartedAt = Date.now();
+    const rangeRequested = !!req.headers.range;
     const fileName = (req.query.filename as string) || "download";
     const mimeType = req.query.mime_type as string | undefined;
     const inline = req.query.inline === "true";
@@ -578,6 +587,16 @@ router.get(
       : undefined;
     const storageType = (req.query.storage_type as string) || "bot";
     const userId = req.query.user_id as string | undefined;
+    let fileSizeHint = 0;
+
+    function logDownloadMetric(status: number, pathUsed: string, detail?: string): void {
+      const elapsedMs = Date.now() - requestStartedAt;
+      const sizeText = fileSizeHint > 0 ? String(fileSizeHint) : "unknown";
+      const suffix = detail ? ` detail=${detail}` : "";
+      console.log(
+        `[Download][Metrics] status=${status} path=${pathUsed} range=${rangeRequested} size=${sizeText} elapsed_ms=${elapsedMs}${suffix}`,
+      );
+    }
 
     if (!remoteFileId) {
       res.status(400).json({ error: "Remote file ID required" });
@@ -598,7 +617,9 @@ router.get(
     // ─── 0. App-level cache (instant, no TDLib calls) ─────────────
     const cachedPath = getCachedPath(remoteFileId);
     if (cachedPath) {
+      try { fileSizeHint = fs.statSync(cachedPath).size; } catch {}
       console.log(`[Download] App-cache HIT for ${remoteFileId.substring(0, 20)}… → ${cachedPath}`);
+      logDownloadMetric(200, "app-cache-hit");
       streamFileToResponse(cachedPath, res, streamOpts);
       return;
     }
@@ -614,7 +635,7 @@ router.get(
           const dl = await client.invoke({
             _: "downloadFile",
             file_id: fileId,
-            priority: 32,
+            priority: TDLIB_DOWNLOAD_PRIORITY,
             offset: 0,
             limit: 0,
             synchronous: true,
@@ -633,6 +654,91 @@ router.get(
         await new Promise(r => setTimeout(r, 200));
       }
 
+      /**
+       * Progressive download: start async TDLib download and stream file as it downloads.
+       * Returns true on success (file cached) or false on failure (for fallback).
+       */
+      async function tryDownloadProgressively(fileId: number): Promise<boolean> {
+        try {
+          const info = await client.invoke({
+            _: "getFile",
+            file_id: fileId,
+          });
+          const expectedSize = (info.size as number) || (info.expected_size as number) || 0;
+          if (expectedSize <= 0) {
+            console.warn(`[Download] Progressive: invalid expectedSize=${expectedSize}`);
+            return false;
+          }
+
+          let downloadedSize = 0;
+          let downloadError: Error | undefined;
+          let isComplete = false;
+
+          const progressObj = {
+            getDownloadedSize: () => downloadedSize,
+            getExpectedSize: () => expectedSize,
+            isComplete: () => isComplete,
+            getError: () => downloadError,
+          };
+
+          const listener = (update: any) => {
+            if (update._ === "updateFile" && update.file?.id === fileId) {
+              const file = update.file as Record<string, any>;
+              const local = file.local as Record<string, any> | undefined;
+              if (local?.downloaded_size !== undefined) {
+                downloadedSize = local.downloaded_size;
+              }
+              if (local?.is_downloading_completed) {
+                isComplete = true;
+              }
+            }
+          };
+          client.on("update", listener);
+
+          let localPath: string | null = null;
+          try {
+            const dl = await client.invoke({
+              _: "downloadFile",
+              file_id: fileId,
+              priority: TDLIB_DOWNLOAD_PRIORITY,
+              offset: 0,
+              limit: 0,
+              synchronous: false,
+            });
+            localPath = (dl.local?.path as string) || null;
+          } catch (err) {
+            downloadError = err instanceof Error ? err : new Error(String(err));
+            client.off("update", listener);
+            return false;
+          }
+
+          if (!localPath) {
+            console.warn(`[Download] Progressive: no local path available after async invoke`);
+            client.off("update", listener);
+            return false;
+          }
+
+          try {
+            await streamFileProgressively(localPath, res, progressObj, streamOpts);
+            if (!res.closed && isComplete) {
+              try { fileSizeHint = fs.statSync(localPath).size; } catch {}
+              cacheFile(remoteFileId, localPath);
+              logDownloadMetric(200, "tdlib-progressive");
+              console.log(`[Download] Progressive stream succeeded for ${remoteFileId.substring(0, 20)}…`);
+            }
+            return true;
+          } catch (err) {
+            console.warn(`[Download] Progressive streaming failed:`, err instanceof Error ? err.message : err);
+            return false;
+          } finally {
+            client.off("update", listener);
+          }
+        } catch (err) {
+          console.warn(`[Download] Progressive setup failed:`, err instanceof Error ? err.message : err);
+          return false;
+        }
+      }
+
       // ─── 1. Resolve remote file_id → TDLib file object ────────────
       const remoteFile = await client.invoke({
         _: "getRemoteFile",
@@ -648,18 +754,40 @@ router.get(
       // ─── 2. Check TDLib local cache ────────────────────────────────
       {
         const info = await client.invoke({ _: "getFile", file_id: tdlibFileId });
+        fileSizeHint = (info.size as number) || (info.expected_size as number) || 0;
         const local = info.local as Record<string, unknown> | undefined;
         if (local?.is_downloading_completed && local.path && fs.existsSync(local.path as string)) {
           cacheFile(remoteFileId, local.path as string);
+          logDownloadMetric(200, "tdlib-local-hit");
           streamFileToResponse(local.path as string, res, streamOpts);
           return;
         }
       }
 
       // ─── 3. Try direct TDLib download ─────────────────────────────
+      const forceProgressive = req.query.stream === "true" || process.env.ENABLE_PROGRESSIVE_DOWNLOAD === "true";
+      const autoProgressive =
+        ENABLE_PROGRESSIVE_FOR_LARGE &&
+        !rangeRequested &&
+        fileSizeHint >= PROGRESSIVE_THRESHOLD_BYTES;
+      const wantStream = forceProgressive || autoProgressive;
+      if (wantStream && !streamOpts.rangeHeader) {
+        if (autoProgressive) {
+          console.log(
+            `[Download] Auto progressive enabled for ${remoteFileId.substring(0, 20)}… size=${fileSizeHint}`,
+          );
+        }
+        if (await tryDownloadProgressively(tdlibFileId)) {
+          return;
+        }
+        console.warn(`[Download] Progressive failed for ${tdlibFileId}, falling back to sync`);
+      }
+
       let localPath = await tryDownloadSync(tdlibFileId);
       if (localPath) {
+        try { fileSizeHint = fs.statSync(localPath).size; } catch {}
         cacheFile(remoteFileId, localPath);
+        logDownloadMetric(200, "tdlib-sync");
         streamFileToResponse(localPath, res, streamOpts);
         return;
       }
@@ -675,7 +803,9 @@ router.get(
 
       localPath = await tryDownloadSync(tdlibFileId);
       if (localPath) {
+        try { fileSizeHint = fs.statSync(localPath).size; } catch {}
         cacheFile(remoteFileId, localPath);
+        logDownloadMetric(200, "tdlib-sync-retry");
         streamFileToResponse(localPath, res, streamOpts);
         return;
       }
@@ -686,7 +816,9 @@ router.get(
         console.log(`[Download] Refreshing via forwardMessage (tdlib_msg_id=${messageId})...`);
         const result = await refreshViaForward(messageId, remoteFileId);
         if (result) {
+          try { fileSizeHint = fs.statSync(result.localPath).size; } catch {}
           cacheFile(remoteFileId, result.localPath);
+          logDownloadMetric(200, "forward-refresh");
           streamFileToResponse(result.localPath, res, streamOpts);
           // File is now cached — don't delete it
           return;
@@ -697,7 +829,9 @@ router.get(
       console.log(`[Download] TDLib recovery failed, trying Bot HTTP API fallback...`);
       const botApiPath = await downloadViaBotApi(remoteFileId);
       if (botApiPath) {
+        try { fileSizeHint = fs.statSync(botApiPath).size; } catch {}
         cacheFile(remoteFileId, botApiPath);
+        logDownloadMetric(200, "bot-api-fallback");
         streamFileToResponse(botApiPath, res, streamOpts);
         // File is now cached — don't delete it
         return;
@@ -705,6 +839,7 @@ router.get(
 
       // ─── 6. All attempts exhausted ────────────────────────────────
       console.error(`[Download] ALL download methods failed for remote_id=${remoteFileId}`);
+      logDownloadMetric(500, "all-methods-failed");
       res.status(500).json({ error: "File download has failed or was canceled" });
     } catch (err) {
       console.error("[Download] Error:", err);
@@ -712,10 +847,12 @@ router.get(
       const errorMsg = err instanceof Error ? err.message : "Download failed";
 
       if (errorMsg.includes("Wrong remote file identifier")) {
+        logDownloadMetric(404, "invalid-remote-file-id", errorMsg);
         res.status(404).json({ error: "Invalid file ID" });
         return;
       }
 
+      logDownloadMetric(500, "exception", errorMsg);
       res.status(500).json({ error: errorMsg });
     }
   }

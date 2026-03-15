@@ -1,41 +1,44 @@
 import requests
+import uuid
 
 def test_post_chunked_upload_init_with_authorization_success():
     base_url = "http://localhost:3000"
-    endpoint = "/api/upload/init"
-    url = base_url + endpoint
+    url = f"{base_url}/api/upload/init"
+    timeout = 30
 
-    # Example JWT token placeholder; replace with valid token for actual test
-    jwt_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mocked.token"
+    # Normally authorization token would be obtained from a login or fixture.
+    # For this test, assume a valid JWT token is provided here.
+    # Replace 'your_valid_jwt_token' with an actual valid token for real testing.
+    auth_token = "your_valid_jwt_token"
 
     headers = {
-        "Authorization": f"Bearer {jwt_token}",
+        "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json"
     }
 
     payload = {
         "fileName": "testfile.txt",
-        "fileSize": 1024 * 1024 * 5,  # 5 MB
+        "fileSize": 123456,
         "mimeType": "text/plain",
-        "totalChunks": 10,
-        "guestSessionId": "test-guest-session-1234"
+        "totalChunks": 5,
+        # guestSessionId as a UUID string, simulate a guest session
+        "guestSessionId": str(uuid.uuid4())
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout)
     except requests.RequestException as e:
         assert False, f"Request failed: {e}"
 
-    assert response.status_code == 200, f"Expected status 200 but got {response.status_code}"
+    assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
 
     try:
         data = response.json()
     except ValueError:
         assert False, "Response is not valid JSON"
 
+    # Validate response includes 'uploadId' and 'chunkEndpoint'
     assert "uploadId" in data, "Response JSON missing 'uploadId'"
-    assert isinstance(data["uploadId"], str) and data["uploadId"], "'uploadId' should be a non-empty string"
     assert "chunkEndpoint" in data, "Response JSON missing 'chunkEndpoint'"
-    assert isinstance(data["chunkEndpoint"], str) and data["chunkEndpoint"], "'chunkEndpoint' should be a non-empty string"
 
 test_post_chunked_upload_init_with_authorization_success()

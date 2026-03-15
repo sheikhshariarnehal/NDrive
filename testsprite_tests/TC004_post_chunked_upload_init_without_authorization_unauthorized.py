@@ -14,11 +14,13 @@ def test_post_chunked_upload_init_without_authorization_unauthorized():
         assert False, f"Request failed: {e}"
 
     assert response.status_code == 401, f"Expected status 401 Unauthorized but got {response.status_code}"
-
+    
     try:
-        body = response.json()
-        assert "error" in body or "message" in body, "Expected error message key in response"
+        json_resp = response.json()
     except Exception:
-        pass
+        json_resp = {}
+
+    err_msg = json_resp.get("error") or json_resp.get("message") or ""
+    assert isinstance(err_msg, str) and "unauthorized" in err_msg.lower(), f"Expected unauthorized error message, got: {err_msg}"
 
 test_post_chunked_upload_init_without_authorization_unauthorized()
