@@ -383,7 +383,7 @@ export const useDownloadStore = create<DownloadStore>((set, get) => {
       }
 
       const contentType = response.headers.get("content-type") || "application/octet-stream";
-      const blob = new Blob(chunks, { type: contentType });
+      const blob = new Blob(chunks as BlobPart[], { type: contentType });
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
