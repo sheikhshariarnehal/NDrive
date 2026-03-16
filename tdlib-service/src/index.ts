@@ -16,7 +16,7 @@ import { sessionManager } from "./session-manager.js";
 import { cleanupOldTempFiles } from "./utils/temp-file.js";
 import uploadRouter from "./routes/upload.js";
 import chunkedUploadRouter from "./routes/chunked-upload.js";
-import downloadRouter, { logDiskStats } from "./routes/download.js";
+import downloadRouter, { logDiskStats, initCache } from "./routes/download.js";
 import thumbnailRouter from "./routes/thumbnail.js";
 import deleteRouter from "./routes/delete.js";
 import telegramAuthRouter from "./routes/telegram-auth.js";
@@ -145,6 +145,9 @@ async function start() {
     console.error("[Startup] Failed to initialize session manager:", err);
     process.exit(1);
   }
+
+  // Load persisted file cache and start sweep timer
+  initCache();
 
   // Log disk/cache stats once at startup so we can see disk usage in logs
   logDiskStats();

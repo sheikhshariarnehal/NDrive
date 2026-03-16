@@ -360,8 +360,11 @@ export function clearCache() {
   markCacheIndexDirty();
   return { clearedCount, clearedBytes };
 }
-loadCacheIndex();
-setInterval(runCacheSweep, CACHE_SWEEP_INTERVAL_MS).unref();
+/** Call once after startup banner to load persisted cache and start the sweep timer. */
+export function initCache(): void {
+  loadCacheIndex();
+  setInterval(runCacheSweep, CACHE_SWEEP_INTERVAL_MS).unref();
+}
 
 /** Log disk usage of the tdlib-files directory (best-effort, non-blocking). */
 export function logDiskStats(): void {
@@ -718,8 +721,21 @@ router.get(
             return false;
           }
 
+          // Auto-cancel TDLib download when client disconnects
+          const onClose = () => {
+            if (!isComplete) {
+              client.invoke({ _: "cancelDownloadFile", file_id: fileId, only_if_pending: false }).catch(() => {});
+              console.log(`[Download] Client disconnected — cancelled TDLib download for file ${fileId}`);
+            }
+          };
+          res.on("close", onClose);
+
           try {
-            await streamFileProgressively(localPath, res, progressObj, streamOpts);
+            await streamFileProgressively(localPath, res, progressObj, {
+              ...streamOpts,
+              tdClient: client as any,
+              tdFileId: fileId,
+            });
             if (!res.closed && isComplete) {
               try { fileSizeHint = fs.statSync(localPath).size; } catch {}
               cacheFile(remoteFileId, localPath);
@@ -731,6 +747,7 @@ router.get(
             console.warn(`[Download] Progressive streaming failed:`, err instanceof Error ? err.message : err);
             return false;
           } finally {
+            res.off("close", onClose);
             client.off("update", listener);
           }
         } catch (err) {
@@ -1028,6 +1045,121 @@ router.get(
       res.status(500).json({
         error: err instanceof Error ? err.message : "Status check failed",
       });
+    }
+  }
+);
+
+/**
+ * POST /api/download/cancel/:remoteFileId
+ * Cancel an in-progress TDLib download for a given remote file ID.
+ */
+router.post(
+  "/cancel/:remoteFileId",
+  async (req: Request, res: Response) => {
+    const { remoteFileId } = req.params;
+    if (!remoteFileId) {
+      res.status(400).json({ error: "Remote file ID required" });
+      return;
+    }
+
+    try {
+      const storageType = (req.query.storage_type as string) || "bot";
+      const userId = req.query.user_id as string | undefined;
+      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+
+      const remoteFile = await client.invoke({
+        _: "getRemoteFile",
+        remote_file_id: remoteFileId,
+      });
+      const tdlibFileId = remoteFile.id as number;
+      if (!tdlibFileId || tdlibFileId === 0) {
+        res.status(404).json({ error: "File not found" });
+        return;
+      }
+
+      await client.invoke({
+        _: "cancelDownloadFile",
+        file_id: tdlibFileId,
+        only_if_pending: false,
+      });
+
+      console.log(`[Download] Cancelled download for file ${tdlibFileId} (remote: ${remoteFileId.substring(0, 20)}…)`);
+      res.json({ ok: true, file_id: tdlibFileId });
+    } catch (err) {
+      console.warn("[Download Cancel] Error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Cancel failed" });
+    }
+  }
+);
+
+/**
+ * POST /api/download/prefetch
+ * Pre-warm a file in TDLib cache with low priority.
+ * Body: { remoteFileId: string, sizeHint?: number }
+ */
+router.post(
+  "/prefetch",
+  async (req: Request, res: Response) => {
+    const { remoteFileId, sizeHint } = req.body as {
+      remoteFileId: string;
+      sizeHint?: number;
+    };
+
+    if (!remoteFileId) {
+      res.status(400).json({ error: "remoteFileId required" });
+      return;
+    }
+
+    // Skip if already cached
+    const cachedPath = getCachedPath(remoteFileId);
+    if (cachedPath) {
+      res.json({ ok: true, status: "already_cached" });
+      return;
+    }
+
+    try {
+      const { client } = await sessionManager.resolveClientAndChat("bot");
+
+      const remoteFile = await client.invoke({
+        _: "getRemoteFile",
+        remote_file_id: remoteFileId,
+      });
+      const tdlibFileId = remoteFile.id as number;
+      if (!tdlibFileId) {
+        res.status(404).json({ error: "File not found" });
+        return;
+      }
+
+      // Check TDLib local cache
+      const info = await client.invoke({ _: "getFile", file_id: tdlibFileId });
+      const local = info.local as Record<string, unknown> | undefined;
+      if (local?.is_downloading_completed && local.path && fs.existsSync(local.path as string)) {
+        cacheFile(remoteFileId, local.path as string);
+        res.json({ ok: true, status: "already_cached" });
+        return;
+      }
+
+      // Already downloading? Don't start another
+      if (local?.is_downloading_active) {
+        res.json({ ok: true, status: "already_downloading" });
+        return;
+      }
+
+      // Start low-priority async download
+      await client.invoke({
+        _: "downloadFile",
+        file_id: tdlibFileId,
+        priority: 1,
+        offset: 0,
+        limit: 0,
+        synchronous: false,
+      });
+
+      console.log(`[Download] Prefetch started for ${remoteFileId.substring(0, 20)}… (size=${sizeHint || "unknown"})`);
+      res.json({ ok: true, status: "prefetching" });
+    } catch (err) {
+      console.warn("[Download Prefetch] Error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Prefetch failed" });
     }
   }
 );
