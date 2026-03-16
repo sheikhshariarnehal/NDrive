@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAuth } from "@/app/providers/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { useFilesStore } from "@/store/files-store";
@@ -38,8 +38,8 @@ export default function RecentPage() {
     let cancelled = false;
 
     const loadOlderPages = async () => {
-      // Start after the first page loaded in layout.
-      let from = PAGE_SIZE;
+      // Start after the first page loaded in layout (200 rows).
+      let from = 200;
 
       while (!cancelled) {
         const to = from + PAGE_SIZE - 1;
@@ -71,18 +71,22 @@ export default function RecentPage() {
       }
     };
 
-    loadOlderPages();
+    // Yield to the browser so the initial 200 files render before fetching older pages.
+    const handle = setTimeout(() => { loadOlderPages(); });
 
     return () => {
       cancelled = true;
+      clearTimeout(handle);
     };
   }, [user?.id, guestSessionId, dataLoaded, mergeFiles]);
 
-  const recentFiles = [...files]
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
+  const recentFiles = useMemo(
+    () =>
+      [...files].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      ),
+    [files]
+  );
 
   if (!dataLoaded) {
     return (

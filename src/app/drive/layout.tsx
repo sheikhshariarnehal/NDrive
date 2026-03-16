@@ -94,7 +94,7 @@ export default function DashboardLayout({
             .eq(filterColumn, filterValue)
             .eq("is_trashed", false)
             .order("created_at", { ascending: false })
-            .limit(1000), // increased from 200 — supplemented by per-folder fetches
+            .limit(200),
           supabase
             .from("folders")
             .select(FOLDER_COLUMNS)
