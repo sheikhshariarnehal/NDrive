@@ -72,6 +72,9 @@ export function signedUrlAuth(
   if (payload.uid) {
     req.query.user_id = payload.uid;
   }
+  if (payload.sz) {
+    req.query.file_size = String(payload.sz);
+  }
 
   next();
 }

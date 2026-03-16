@@ -658,13 +658,13 @@ router.get(
        * Progressive download: start async TDLib download and stream file as it downloads.
        * Returns true on success (file cached) or false on failure (for fallback).
        */
-      async function tryDownloadProgressively(fileId: number): Promise<boolean> {
+      async function tryDownloadProgressively(fileId: number, sizeHintFallback = 0): Promise<boolean> {
         try {
           const info = await client.invoke({
             _: "getFile",
             file_id: fileId,
           });
-          const expectedSize = (info.size as number) || (info.expected_size as number) || 0;
+          const expectedSize = (info.size as number) || (info.expected_size as number) || sizeHintFallback || 0;
           if (expectedSize <= 0) {
             console.warn(`[Download] Progressive: invalid expectedSize=${expectedSize}`);
             return false;
@@ -754,7 +754,8 @@ router.get(
       // ─── 2. Check TDLib local cache ────────────────────────────────
       {
         const info = await client.invoke({ _: "getFile", file_id: tdlibFileId });
-        fileSizeHint = (info.size as number) || (info.expected_size as number) || 0;
+        fileSizeHint = (info.size as number) || (info.expected_size as number)
+          || parseInt(req.query.file_size as string || "0", 10) || 0;
         const local = info.local as Record<string, unknown> | undefined;
         if (local?.is_downloading_completed && local.path && fs.existsSync(local.path as string)) {
           cacheFile(remoteFileId, local.path as string);
@@ -777,7 +778,7 @@ router.get(
             `[Download] Auto progressive enabled for ${remoteFileId.substring(0, 20)}… size=${fileSizeHint}`,
           );
         }
-        if (await tryDownloadProgressively(tdlibFileId)) {
+        if (await tryDownloadProgressively(tdlibFileId, fileSizeHint)) {
           return;
         }
         console.warn(`[Download] Progressive failed for ${tdlibFileId}, falling back to sync`);
