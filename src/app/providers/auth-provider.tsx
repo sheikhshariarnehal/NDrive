@@ -44,29 +44,35 @@ const AuthContext = createContext<AuthContextType>({
  */
 async function ensureUserProfile(supabase: ReturnType<typeof createClient>, user: User) {
   try {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id", user.id)
-      .single();
+    const displayName =
+      user.user_metadata?.display_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "User";
 
-    if (!profile) {
-      const displayName =
-        user.user_metadata?.display_name ||
-        user.user_metadata?.full_name ||
-        user.email?.split("@")[0] ||
-        "User";
+    const avatarUrl =
+      user.user_metadata?.avatar_url ||
+      user.user_metadata?.picture ||
+      null;
 
-      await supabase.from("users").insert({
+    // Upsert keeps profile rows in sync for users created before/after trigger,
+    // and refreshes missing avatar/name data from the auth provider metadata.
+    const { error } = await supabase.from("users").upsert(
+      {
         id: user.id,
         email: user.email,
         display_name: displayName,
-        avatar_url: user.user_metadata?.avatar_url || null,
-      });
+        avatar_url: avatarUrl,
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("ensureUserProfile: upsert failed", error.message);
     }
   } catch {
-    // Profile already exists or creation failed silently — either way, don't block auth
-    console.warn("ensureUserProfile: could not verify/create profile");
+    // Profile sync failed silently — don't block auth flow
+    console.warn("ensureUserProfile: could not sync profile");
   }
 }
 

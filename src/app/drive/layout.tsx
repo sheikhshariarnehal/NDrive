@@ -41,10 +41,9 @@ export default function DashboardLayout({
   const cancelDownload = useDownloadStore((s) => s.cancelDownload);
   const cancelAll = useDownloadStore((s) => s.cancelAll);
   const retryDownload = useDownloadStore((s) => s.retryDownload);
-  const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("telegram-banner-dismissed") === "true";
-  });
+  const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem("telegram-banner-dismissed") === "true"
+  );
   const { setFiles, mergeFiles, setFolders, setIsLoading, setDataLoaded, currentFolderId } = useFilesStore();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
@@ -239,7 +238,7 @@ export default function DashboardLayout({
                   <button
                     onClick={() => {
                       setTelegramBannerDismissed(true);
-                      localStorage.setItem("telegram-banner-dismissed", "true");
+                      sessionStorage.setItem("telegram-banner-dismissed", "true");
                     }}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-white/50 hover:text-[#202124]"
                     aria-label="Dismiss"

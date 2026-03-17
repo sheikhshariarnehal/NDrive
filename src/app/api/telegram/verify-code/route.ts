@@ -53,15 +53,23 @@ export async function POST(request: NextRequest) {
 
     // If auth is complete, update user's Telegram status in Supabase
     if (data.status === "ready") {
-      await supabase
+      const { error: saveError } = await supabase
         .from("users")
         .update({
           telegram_connected: true,
-          telegram_phone: data.phone || null,
-          telegram_user_id: data.telegramUserId || null,
+          telegram_phone: data.phone ?? null,
+          telegram_user_id: data.telegramUserId ?? null,
           telegram_connected_at: new Date().toISOString(),
         })
         .eq("id", user.id);
+
+      if (saveError) {
+        console.error("[telegram/verify-code] Failed to persist Telegram fields:", saveError);
+        return NextResponse.json(
+          { error: "Telegram verified but profile update failed. Please retry." },
+          { status: 500 },
+        );
+      }
     }
 
     return NextResponse.json(data);

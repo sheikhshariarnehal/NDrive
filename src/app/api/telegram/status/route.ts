@@ -80,10 +80,18 @@ export async function GET() {
         const data = await response.json();
         // Backend has a session the DB doesn't know about — sync DB
         if (data.connected) {
-          await supabase
+          const { error: syncError } = await supabase
             .from("users")
-            .update({ telegram_connected: true })
+            .update({
+              telegram_connected: true,
+              telegram_user_id: data.telegramUserId ?? null,
+              telegram_connected_at: new Date().toISOString(),
+            })
             .eq("id", user.id);
+
+          if (syncError) {
+            console.error("[telegram/status] Failed to sync connected state:", syncError);
+          }
         }
         return NextResponse.json(data);
       }
