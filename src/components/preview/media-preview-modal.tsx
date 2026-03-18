@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
-import { ImagePreview } from "@/components/preview/image-preview";
-import { PdfPreview } from "@/components/preview/pdf-preview";
-import { VideoPreview } from "@/components/preview/video-preview";
-import { OfficePreview } from "@/components/preview/office-preview";
-import { CsvPreview } from "@/components/preview/csv-preview";
-import { TextPreview } from "@/components/preview/text-preview";
-import { JsonPreview } from "@/components/preview/json-preview";
-import { PptxPreview } from "@/components/preview/pptx-preview";
 import {
   Download,
   FileIcon,
@@ -28,32 +21,55 @@ import {
 import { getFileCategory, formatFileSize, isOfficeFile, isCsvFile, isPptxFile, isJsonFile, isTextFile, isPreviewableFile, isLegacyPptFile } from "@/types/file.types";
 import { getFileUrl } from "@/lib/utils";
 
+const ImagePreview = dynamic(() => import("@/components/preview/image-preview").then((m) => m.ImagePreview));
+const PdfPreview = dynamic(() => import("@/components/preview/pdf-preview").then((m) => m.PdfPreview));
+const VideoPreview = dynamic(() => import("@/components/preview/video-preview").then((m) => m.VideoPreview));
+const OfficePreview = dynamic(() => import("@/components/preview/office-preview").then((m) => m.OfficePreview));
+const CsvPreview = dynamic(() => import("@/components/preview/csv-preview").then((m) => m.CsvPreview));
+const TextPreview = dynamic(() => import("@/components/preview/text-preview").then((m) => m.TextPreview));
+const JsonPreview = dynamic(() => import("@/components/preview/json-preview").then((m) => m.JsonPreview));
+const PptxPreview = dynamic(() => import("@/components/preview/pptx-preview").then((m) => m.PptxPreview));
+
 export function MediaPreviewModal() {
   const { files } = useFilesStore();
   const { previewFileId, setPreviewFileId, shareModalOpen, setShareModalOpen, setShareFileId } =
     useUIStore();
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
-  const file = files.find((f) => f.id === previewFileId);
+  const file = useMemo(
+    () => files.find((f) => f.id === previewFileId),
+    [files, previewFileId]
+  );
 
   // Get only previewable image files for navigation
-  const imageFiles = files.filter(
-    (f) => getFileCategory(f.mime_type) === "image"
+  const imageFiles = useMemo(
+    () => files.filter((f) => getFileCategory(f.mime_type) === "image"),
+    [files]
   );
-  const currentImageIndex = imageFiles.findIndex(
-    (f) => f.id === previewFileId
+  const currentImageIndex = useMemo(
+    () => imageFiles.findIndex((f) => f.id === previewFileId),
+    [imageFiles, previewFileId]
   );
-  const category = file ? getFileCategory(file.mime_type) : null;
+  const category = useMemo(
+    () => (file ? getFileCategory(file.mime_type) : null),
+    [file]
+  );
   const isImage = category === "image";
+  const fileUrl = useMemo(
+    () => (previewFileId && file ? getFileUrl(previewFileId, file.name) : null),
+    [previewFileId, file]
+  );
 
-  // Build the file URL when the preview file changes
-  useEffect(() => {
-    if (!previewFileId || !file) {
-      setFileUrl(null);
-      return;
-    }
-    setFileUrl(getFileUrl(previewFileId, file.name));
-  }, [previewFileId, file]);
+  const prevImageId = useMemo(
+    () => (currentImageIndex > 0 ? imageFiles[currentImageIndex - 1]?.id : null),
+    [currentImageIndex, imageFiles]
+  );
+  const nextImageId = useMemo(
+    () =>
+      currentImageIndex >= 0 && currentImageIndex < imageFiles.length - 1
+        ? imageFiles[currentImageIndex + 1]?.id
+        : null,
+    [currentImageIndex, imageFiles]
+  );
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -62,23 +78,21 @@ export function MediaPreviewModal() {
 
       if (e.key === "Escape") {
         setPreviewFileId(null);
-      } else if (e.key === "ArrowLeft" && isImage && currentImageIndex > 0) {
-        setPreviewFileId(imageFiles[currentImageIndex - 1].id);
-      } else if (
-        e.key === "ArrowRight" &&
-        isImage &&
-        currentImageIndex < imageFiles.length - 1
-      ) {
-        setPreviewFileId(imageFiles[currentImageIndex + 1].id);
+      } else if (e.key === "ArrowLeft" && isImage && prevImageId) {
+        setPreviewFileId(prevImageId);
+      } else if (e.key === "ArrowRight" && isImage && nextImageId) {
+        setPreviewFileId(nextImageId);
       }
     },
-    [previewFileId, isImage, currentImageIndex, imageFiles, setPreviewFileId, shareModalOpen]
+    [previewFileId, isImage, prevImageId, nextImageId, setPreviewFileId, shareModalOpen]
   );
 
   useEffect(() => {
+    if (!previewFileId) return;
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  }, [previewFileId, handleKeyDown]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -107,15 +121,11 @@ export function MediaPreviewModal() {
   // but keeping handleDownload below intact.
 
   const handlePrev = () => {
-    if (currentImageIndex > 0) {
-      setPreviewFileId(imageFiles[currentImageIndex - 1].id);
-    }
+    if (prevImageId) setPreviewFileId(prevImageId);
   };
 
   const handleNext = () => {
-    if (currentImageIndex < imageFiles.length - 1) {
-      setPreviewFileId(imageFiles[currentImageIndex + 1].id);
-    }
+    if (nextImageId) setPreviewFileId(nextImageId);
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -191,7 +201,7 @@ export function MediaPreviewModal() {
         onClick={handleOverlayClick}
       >
         {/* Left navigation arrow */}
-        {isImage && currentImageIndex > 0 && (
+        {isImage && !!prevImageId && (
           <button
             onClick={handlePrev}
             className="absolute left-4 z-10 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/50 rounded-full transition-all"
@@ -289,7 +299,7 @@ export function MediaPreviewModal() {
         </div>
 
         {/* Right navigation arrow */}
-        {isImage && currentImageIndex < imageFiles.length - 1 && (
+        {isImage && !!nextImageId && (
           <button
             onClick={handleNext}
             className="absolute right-4 z-10 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/50 rounded-full transition-all"
