@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/app/providers/auth-provider";
+import { DownloadManagerOverlay } from "@/components/download/download-manager-overlay";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
         <AuthProvider>
           <TooltipProvider>
             {children}
+            <DownloadManagerOverlay />
           </TooltipProvider>
         </AuthProvider>
       </body>
