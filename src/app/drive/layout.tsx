@@ -12,11 +12,24 @@ import { TopBar } from "@/components/top-bar/top-bar";
 import { UploadZone } from "@/components/upload/upload-zone";
 import { UploadProgress } from "@/components/upload/upload-progress";
 import dynamic from "next/dynamic";
-import { NewFolderModal } from "@/components/modals/new-folder-modal";
-import { RenameModal } from "@/components/modals/rename-modal";
 import type { DbFile, DbFolder } from "@/types/file.types";
-import { ShareModal } from "@/components/modals/share-modal";
-import { ConnectTelegramModal } from "@/components/modals/connect-telegram-modal";
+
+const NewFolderModal = dynamic(
+  () => import("@/components/modals/new-folder-modal").then((m) => ({ default: m.NewFolderModal })),
+  { ssr: false }
+);
+const RenameModal = dynamic(
+  () => import("@/components/modals/rename-modal").then((m) => ({ default: m.RenameModal })),
+  { ssr: false }
+);
+const ShareModal = dynamic(
+  () => import("@/components/modals/share-modal").then((m) => ({ default: m.ShareModal })),
+  { ssr: false }
+);
+const ConnectTelegramModal = dynamic(
+  () => import("@/components/modals/connect-telegram-modal").then((m) => ({ default: m.ConnectTelegramModal })),
+  { ssr: false }
+);
 import { MobileUploadFab } from "@/components/upload/mobile-upload-fab";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import Telegram from "@/components/ui/Telegram";

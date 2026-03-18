@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAuth } from "@/app/providers/auth-provider";
 import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
@@ -30,61 +30,32 @@ export default function DashboardPage() {
   const { openFilePicker } = useUIStore();
   const effectiveViewMode = useEffectiveViewMode();
 
-  // ── Supplementary fetch: only fires when the layout hit its 1 000-file limit.
-  // On every normal load (< 1 000 files) this is skipped entirely, saving ~780 ms.
-  useEffect(() => {
-    if (!dataLoaded) return;          // wait for layout's initial fetch to complete
-    if (files.length < 1000) return;  // layout got everything; no supplementary needed
-
-    const userId = user?.id;
-    const filterColumn = userId ? "user_id" : "guest_session_id";
-    const filterValue = userId || guestSessionId;
-    if (!filterValue) return;
-
-    const FILE_COLUMNS =
-      "id,user_id,guest_session_id,folder_id,name,original_name," +
-      "mime_type,size_bytes,telegram_file_id,telegram_message_id," +
-      "file_hash,tdlib_file_id,is_starred,is_trashed,trashed_at," +
-      "created_at,updated_at,thumbnail_url";
-
-    const supabase = createClient();
-    supabase
-      .from("files")
-      .select(FILE_COLUMNS)
-      .eq(filterColumn, filterValue)
-      .is("folder_id", null)
-      .eq("is_trashed", false)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          mergeFiles(data as unknown as DbFile[]);
-        }
-      });
-  }, [dataLoaded, files.length, user?.id, guestSessionId, mergeFiles]);
+  // (Supplementary fetch for root files was removed as layout.tsx now handles full background hydration of all files)
 
   // Filter files and folders for root level (no parent) and search
-  const rootFolders = folders.filter((f) => !f.parent_id);
-  const rootFiles = files.filter((f) => !f.folder_id);
+  const rootFolders = useMemo(() => folders.filter((f) => !f.parent_id), [folders]);
+  const rootFiles = useMemo(() => files.filter((f) => !f.folder_id), [files]);
 
-  const filteredFiles = searchQuery
+  const filteredFiles = useMemo(() => searchQuery
     ? files.filter((f) =>
         f.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : rootFiles;
+    : rootFiles, [searchQuery, files, rootFiles]);
 
-  const filteredFolders = searchQuery
+  const filteredFolders = useMemo(() => searchQuery
     ? folders.filter((f) =>
         f.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : rootFolders;
+    : rootFolders, [searchQuery, folders, rootFolders]);
 
-  const starredFiles = files.filter((f) => f.is_starred);
-  const recentFiles = [...files]
+  const starredFiles = useMemo(() => files.filter((f) => f.is_starred), [files]);
+  
+  const recentFiles = useMemo(() => [...files]
     .sort(
       (a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     )
-    .slice(0, 10);
+    .slice(0, 10), [files]);
 
   if (isLoading || !dataLoaded) {
     return (
