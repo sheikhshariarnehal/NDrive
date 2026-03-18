@@ -22,6 +22,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import Telegram from "@/components/ui/Telegram";
 import { DownloadSpeedometer } from "@/components/share/download-speedometer";
 import { useDownloadStore } from "@/store/download-store";
+import { usePathname } from "next/navigation";
 
 // Lazy-load PreviewModal — it bundles 8 preview sub-components that are only
 // needed when the user actually opens a file. Deferring saves ~60 KB on initial load.
@@ -35,6 +36,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isPhotosPage = pathname === "/drive/photos";
+  
   const { user, guestSessionId, isLoading: authLoading, isTelegramConnected, isTelegramStatusLoading } = useAuth();
   const isGuest = !user && !!guestSessionId;
   const downloads = useDownloadStore((s) => s.downloads);
@@ -252,12 +256,12 @@ export default function DashboardLayout({
 
           <TopBar />
 
-          <main className="flex-1 overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
+          <main className={`flex-1 overflow-hidden sm:pb-3 ${isPhotosPage ? "px-0 pb-0 sm:px-0" : "px-2 pb-2 sm:px-3"}`}>
             <div 
               style={{ "--radius": "0.625rem" } as React.CSSProperties}
-              className="bg-surface-white text-card-foreground rounded-[calc(var(--radius)+0.5rem)] sm:rounded-[calc(var(--radius)+0.75rem)] h-full border border-transparent overflow-hidden flex flex-col"
+              className={`bg-surface-white text-card-foreground h-full border border-transparent flex flex-col overflow-hidden ${isPhotosPage ? "rounded-none" : "rounded-[calc(var(--radius)+0.5rem)] sm:rounded-[calc(var(--radius)+0.75rem)]"}`}
             >
-              <div className="flex-1 overflow-y-auto w-full px-2.5 sm:px-4 lg:px-5 pb-20 sm:pb-4">
+              <div className={`flex-1 overflow-y-auto w-full pb-20 sm:pb-4 ${isPhotosPage ? "px-0 sm:px-0 lg:px-0" : "px-2.5 sm:px-4 lg:px-5"}`}>
                 {children}
               </div>
             </div>

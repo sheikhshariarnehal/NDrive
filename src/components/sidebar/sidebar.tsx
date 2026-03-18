@@ -32,10 +32,12 @@ import {
   FolderPlus,
   Upload,
   FolderUp,
+  ImageIcon,
 } from "lucide-react";
 
 const navItems: Array<{ href: string; label: string; icon: LucideIcon; badge?: string }> = [
   { href: "/drive", label: "My Drive", icon: FolderOpen },
+  { href: "/drive/photos", label: "Photos", icon: ImageIcon },
   { href: "/drive/recent", label: "Recent", icon: History },
   { href: "/drive/starred", label: "Starred", icon: Star },
   { href: "/drive/shared", label: "Shared with me", icon: Users },
