@@ -13,6 +13,7 @@ import { UploadZone } from "@/components/upload/upload-zone";
 import { UploadProgress } from "@/components/upload/upload-progress";
 import dynamic from "next/dynamic";
 import type { DbFile, DbFolder } from "@/types/file.types";
+import { getFileCategory } from "@/types/file.types";
 
 const NewFolderModal = dynamic(
   () => import("@/components/modals/new-folder-modal").then((m) => ({ default: m.NewFolderModal })),
@@ -44,6 +45,11 @@ const PreviewModal = dynamic(
   { ssr: false }
 );
 
+const MediaPreviewModal = dynamic(
+  () => import("@/components/preview/media-preview-modal").then((m) => ({ default: m.MediaPreviewModal })),
+  { ssr: false }
+);
+
 export default function DashboardLayout({
   children,
 }: {
@@ -61,12 +67,15 @@ export default function DashboardLayout({
   const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(
     () => typeof window !== "undefined" && sessionStorage.getItem("telegram-banner-dismissed") === "true"
   );
-  const { setFiles, mergeFiles, setFolders, setIsLoading, setDataLoaded, currentFolderId } = useFilesStore();
+  const { files, setFiles, mergeFiles, setFolders, setIsLoading, setDataLoaded, currentFolderId } = useFilesStore();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const isOnline = useUIStore((s) => s.isOnline);
   const setIsOnline = useUIStore((s) => s.setIsOnline);
   const previewFileId = useUIStore((s) => s.previewFileId);
+  const previewFile = previewFileId ? files.find((file) => file.id === previewFileId) : null;
+  const isMediaPreviewFile =
+    previewFile ? ["image", "video"].includes(getFileCategory(previewFile.mime_type)) : false;
 
 
   // Set up realtime subscriptions
@@ -286,7 +295,7 @@ export default function DashboardLayout({
 
         {/* Modals */}
         <UploadProgress />
-        {previewFileId ? <PreviewModal /> : null}
+        {previewFileId ? (isMediaPreviewFile ? <MediaPreviewModal /> : <PreviewModal />) : null}
         <NewFolderModal />
         <RenameModal />
         <ShareModal />

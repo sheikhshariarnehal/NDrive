@@ -13,18 +13,22 @@ import { JsonPreview } from "@/components/preview/json-preview";
 import { PptxPreview } from "@/components/preview/pptx-preview";
 import {
   Download,
-  X,
   FileIcon,
   ChevronLeft,
   ChevronRight,
   Share2,
-  Printer,
   MoreVertical,
+  ArrowLeft,
+  SlidersHorizontal,
+  ZoomIn,
+  Info,
+  Star,
+  Trash2,
 } from "lucide-react";
 import { getFileCategory, formatFileSize, isOfficeFile, isCsvFile, isPptxFile, isJsonFile, isTextFile, isPreviewableFile, isLegacyPptFile } from "@/types/file.types";
 import { getFileUrl } from "@/lib/utils";
 
-export function PreviewModal() {
+export function MediaPreviewModal() {
   const { files } = useFilesStore();
   const { previewFileId, setPreviewFileId, shareModalOpen, setShareModalOpen, setShareFileId } =
     useUIStore();
@@ -99,12 +103,8 @@ export function PreviewModal() {
     setShareModalOpen(true);
   };
 
-  const handlePrint = () => {
-    if (fileUrl && isImage) {
-      const printWindow = window.open(fileUrl, "_blank");
-      printWindow?.addEventListener("load", () => printWindow.print());
-    }
-  };
+  // Print removed to match Google Photos cleaner top-bar experience
+  // but keeping handleDownload below intact.
 
   const handlePrev = () => {
     if (currentImageIndex > 0) {
@@ -125,56 +125,61 @@ export function PreviewModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#202124]">
-      {/* ===== TOP BAR - Google Drive style ===== */}
-      <div className="flex items-center justify-between h-16 px-4 bg-[#202124] flex-shrink-0">
-        {/* Left: Close + filename */}
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+      {/* ===== TOP BAR - Google Photos style ===== */}
+      <div className="absolute top-0 left-0 right-0 z-50 flex items-start justify-between h-24 pt-3 sm:pt-4 px-2 sm:px-4 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300">
+        
+        {/* Left: Back Arrow */}
+        <div className="flex items-center pointer-events-auto">
           <button
             onClick={() => setPreviewFileId(null)}
-            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
-            title="Close"
+            className="p-2 sm:p-2.5 text-white bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-full transition-all flex-shrink-0 shadow-sm"
+            title="Back"
           >
-            <X className="h-5 w-5" />
+            <ArrowLeft className="h-6 w-6" />
           </button>
-          <div className="min-w-0">
-            <h2 className="text-[15px] font-medium text-white truncate">
-              {file.name}
-            </h2>
-            {file.size_bytes && (
-              <p className="text-xs text-white/50">
-                {formatFileSize(file.size_bytes)}
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {isImage && (
-            <button
-              onClick={handlePrint}
-              className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-              title="Print"
-            >
-              <Printer className="h-5 w-5" />
-            </button>
-          )}
-          <button
-            onClick={handleDownload}
-            className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-            title="Download"
-          >
-            <Download className="h-5 w-5" />
-          </button>
+        <div className="flex items-center gap-0.5 sm:gap-1 pointer-events-auto">
           <button
             onClick={handleShare}
-            className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
             title="Share"
           >
             <Share2 className="h-5 w-5" />
           </button>
-          <button className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="More actions">
+          
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:block" title="Edit">
+            <SlidersHorizontal className="h-5 w-5" />
+          </button>
+          
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:block" title="Zoom">
+            <ZoomIn className="h-5 w-5" />
+          </button>
+          
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden md:block" title="Info">
+            <Info className="h-5 w-5" />
+          </button>
+          
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden md:block" title="Star">
+            <Star className="h-5 w-5" />
+          </button>
+
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:block" title="Delete">
+            <Trash2 className="h-5 w-5" />
+          </button>
+          
+          {/* We keep Download prominently since it's a Cloud Drive */}
+          <button
+            onClick={handleDownload}
+            className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+            title="Download"
+          >
+            <Download className="h-5 w-5" />
+          </button>
+          
+          <button className="p-2 sm:p-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="More options">
             <MoreVertical className="h-5 w-5" />
           </button>
         </div>
@@ -182,7 +187,7 @@ export function PreviewModal() {
 
       {/* ===== MAIN CONTENT AREA ===== */}
       <div
-        className="flex-1 relative flex items-center justify-center overflow-hidden"
+        className="flex-1 relative flex items-center justify-center overflow-hidden w-full h-full"
         onClick={handleOverlayClick}
       >
         {/* Left navigation arrow */}
@@ -207,7 +212,7 @@ export function PreviewModal() {
                 </div>
               )}
               {category === "video" && (
-                <div className="max-w-5xl w-full px-8">
+                <div className="absolute inset-0 w-full h-full">
                   <VideoPreview src={fileUrl} />
                 </div>
               )}
