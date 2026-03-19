@@ -7,6 +7,12 @@ const API_KEY = process.env.TDLIB_SERVICE_API_KEY || "";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const STATUS_RETRY_DELAY_MS = 1200;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * GET /api/telegram/status
  * Check the current user's Telegram connection status.
@@ -55,7 +61,35 @@ export async function GET() {
         });
       }
 
-      // Backend says session is gone — update DB to reflect reality
+      // Backend says session is gone. Retry once to avoid false disconnects
+      // caused by brief TDLib reactivation delays.
+      await delay(STATUS_RETRY_DELAY_MS);
+      try {
+        const retryResponse = await fetch(
+          `${BACKEND_URL}/api/telegram/status/${encodeURIComponent(user.id)}`,
+          { headers: { "X-API-Key": API_KEY }, signal: AbortSignal.timeout(5000) },
+        );
+
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          if (retryData.connected) {
+            return NextResponse.json({
+              connected: true,
+              phone: profile.telegram_phone,
+              telegramUserId: profile.telegram_user_id,
+            });
+          }
+        }
+      } catch {
+        // Keep DB state if retry cannot confirm disconnection.
+        return NextResponse.json({
+          connected: true,
+          phone: profile.telegram_phone,
+          telegramUserId: profile.telegram_user_id,
+        });
+      }
+
+      // Confirmed disconnected on retry — now update DB.
       await supabase
         .from("users")
         .update({

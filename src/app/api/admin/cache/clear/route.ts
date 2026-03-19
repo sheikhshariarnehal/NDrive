@@ -4,7 +4,7 @@ import { tdlibPost } from "@/lib/admin/tdlib-proxy";
 
 export async function POST() {
   try {
-    const result = await tdlibPost("/admin/cache/clear");
+    const result = await tdlibPost("/api/admin/cache/clear");
     return NextResponse.json(result.payload, { status: result.status });
   } catch (error) {
     return NextResponse.json(

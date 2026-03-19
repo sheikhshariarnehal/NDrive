@@ -28,13 +28,12 @@ type MetricsPayload = {
     maxSessions: number;
   };
   cache: {
-    cachedFiles: number;
-    totalSizeBytes: number;
-    maxSizeBytes: number;
-    usagePercent: number;
-    hitCount: number;
-    missCount: number;
-    hitRate: string;
+    cachedFiles?: number;
+    totalSizeBytes?: number;
+    totalEntries?: number;
+    appManagedBytes?: number;
+    hitRate?: string;
+    entries?: Array<{ id: string; size: number; isAppManaged: boolean; lastAccessed: number }>;
   };
 };
 
@@ -51,7 +50,7 @@ type StoragePayload = {
 };
 
 type LogsPayload = {
-  logs: string[];
+  logs: Array<string | { msg?: string; message?: string; type?: string; timestamp?: string }>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,6 +73,19 @@ function isLogsPayload(value: unknown): value is LogsPayload {
   return isRecord(value) && Array.isArray(value.logs);
 }
 
+function toLogLine(entry: LogsPayload["logs"][number]): string {
+  if (typeof entry === "string") {
+    return entry;
+  }
+
+  const message = entry.msg ?? entry.message ?? "";
+  const type = entry.type ? entry.type.toUpperCase() : "INFO";
+  const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "";
+  const prefix = timestamp ? `[${timestamp}] [${type}]` : `[${type}]`;
+
+  return message ? `${prefix} ${message}` : prefix;
+}
+
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
     const response = await fetch(url, { cache: "no-store" });
@@ -90,7 +102,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 export default function SystemDashboard() {
   const [metrics, setMetrics] = useState<MetricsPayload | null>(null);
   const [storage, setStorage] = useState<StoragePayload | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogsPayload["logs"]>([]);
   const [loading, setLoading] = useState(true);
   const [runningAction, setRunningAction] = useState<"cache" | "optimize" | "cleanup" | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +149,13 @@ export default function SystemDashboard() {
   };
 
   const statusReady = metrics?.tdlib?.ready ?? false;
+  const cacheSizeBytes = metrics?.cache.totalSizeBytes ?? metrics?.cache.appManagedBytes ?? 0;
+  const cacheFiles =
+    metrics?.cache.cachedFiles ??
+    metrics?.cache.totalEntries ??
+    metrics?.cache.entries?.length ??
+    0;
+  const cacheHitRate = metrics?.cache.hitRate ?? "N/A";
 
   return (
     <div className="flex-1 space-y-4">
@@ -186,9 +205,9 @@ export default function SystemDashboard() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading || !metrics ? "-" : formatBytes(metrics.cache.totalSizeBytes)}</div>
+            <div className="text-2xl font-bold">{loading || !metrics ? "-" : formatBytes(cacheSizeBytes)}</div>
             <p className="text-xs text-muted-foreground">
-              {loading || !metrics ? "" : `Hit rate: ${metrics.cache.hitRate} · Files: ${metrics.cache.cachedFiles}`}
+              {loading || !metrics ? "" : `Hit rate: ${cacheHitRate} · Files: ${cacheFiles}`}
             </p>
           </CardContent>
         </Card>
@@ -230,7 +249,7 @@ export default function SystemDashboard() {
           </CardHeader>
           <CardContent>
             <pre className="max-h-80 overflow-auto rounded-md bg-black p-4 text-xs text-green-400">
-              {(logs.length ? logs.slice(-40) : ["No logs returned."]).join("\n")}
+              {(logs.length ? logs.slice(-40).map(toLogLine) : ["No logs returned."]).join("\n")}
             </pre>
           </CardContent>
         </Card>

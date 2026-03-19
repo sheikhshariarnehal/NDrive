@@ -39,11 +39,11 @@ export default function StorageGrowthChart({ data }: Props) {
       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="colorBytes" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" opacity={0.2} />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--foreground, #ffffff)" opacity={0.1} />
         <XAxis 
           dataKey="date" 
           tickLine={false} 
@@ -52,7 +52,7 @@ export default function StorageGrowthChart({ data }: Props) {
           dy={10} 
         />
         <YAxis
-          tickFormatter={(val) => formatBytes(val).replace(' ', '')}
+          tickFormatter={(val) => formatBytes(val)}
           tickLine={false}
           axisLine={false}
           tick={{ fontSize: 12 }}
@@ -90,7 +90,7 @@ export default function StorageGrowthChart({ data }: Props) {
           type="monotone"
           dataKey="totalBytes"
           stroke="#3b82f6"
-          strokeWidth={2}
+          strokeWidth={3}
           fillOpacity={1}
           fill="url(#colorBytes)"
         />
