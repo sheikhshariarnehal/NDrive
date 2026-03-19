@@ -209,7 +209,7 @@ export function ConnectTelegramModal() {
                     <Label htmlFor="country" className="sr-only">Country</Label>
                     <Select
                       value={countryCode}
-                      onValueChange={setCountryCode}
+                      onValueChange={(value) => setCountryCode(value ?? "+880")}
                       disabled={isLoading}
                     >
                       <SelectTrigger id="country" className="[&_[data-country-name]]:hidden h-10 rounded-none border-0 bg-transparent px-2 text-base font-semibold shadow-none outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">

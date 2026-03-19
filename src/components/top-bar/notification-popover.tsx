@@ -120,19 +120,21 @@ export function NotificationPopover() {
 
   return (
     <DropdownMenu onOpenChange={handleOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-10 w-10 hover:bg-accent"
-          aria-label="Notifications"
-        >
-          <Bell className="h-[19px] w-[19px]" />
-          {showBadge && (
-            <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background" />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={(
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-10 w-10 hover:bg-accent"
+            aria-label="Notifications"
+          >
+            <Bell className="h-[19px] w-[19px]" />
+            {showBadge && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background" />
+            )}
+          </Button>
+        )}
+      />
       <DropdownMenuContent
         align="end"
         className="w-80 p-0 overflow-hidden"

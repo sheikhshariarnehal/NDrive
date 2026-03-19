@@ -86,37 +86,41 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full border border-[#9aa0a6] bg-[#f8f9fa]">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 rounded-full ${
-                    viewMode === "list"
-                      ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
-                      : "text-[#5f6368] hover:bg-[#f1f3f4]"
-                  }`}
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="h-[18px] w-[18px]" />
-                </Button>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={(
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 rounded-full ${
+                      viewMode === "list"
+                        ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
+                        : "text-[#5f6368] hover:bg-[#f1f3f4]"
+                    }`}
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-[18px] w-[18px]" />
+                  </Button>
+                )}
+              />
               <TooltipContent><p>List view</p></TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 rounded-full ${
-                    viewMode === "grid"
-                      ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
-                      : "text-[#5f6368] hover:bg-[#f1f3f4]"
-                  }`}
-                  onClick={() => setViewMode("grid")}
-                >
-                  <LayoutGrid className="h-[18px] w-[18px]" />
-                </Button>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={(
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 rounded-full ${
+                      viewMode === "grid"
+                        ? "bg-[#e8f0fe] text-[#174ea6] hover:bg-[#d2e3fc]"
+                        : "text-[#5f6368] hover:bg-[#f1f3f4]"
+                    }`}
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid className="h-[18px] w-[18px]" />
+                  </Button>
+                )}
+              />
               <TooltipContent><p>Grid view</p></TooltipContent>
             </Tooltip>
             </div>

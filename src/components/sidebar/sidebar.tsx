@@ -154,15 +154,17 @@ export function Sidebar() {
               onChange={handleFolderUpload}
             />
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-fit h-12 px-6 rounded-2xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] text-[#202124] font-medium text-sm gap-2.5 transition-all"
-                >
-                  <Plus className="h-5 w-5" />
-                  <span>New</span>
-                </Button>
-              </DropdownMenuTrigger>
+              <DropdownMenuTrigger
+                render={(
+                  <Button
+                    variant="outline"
+                    className="w-fit h-12 px-6 rounded-2xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] text-[#202124] font-medium text-sm gap-2.5 transition-all"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span>New</span>
+                  </Button>
+                )}
+              />
               <DropdownMenuContent
                 align="start"
                 className="w-[360px] p-0 rounded-[12px] border border-[#dadce0] bg-white text-[#202124] shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] overflow-hidden"

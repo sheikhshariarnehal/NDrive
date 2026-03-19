@@ -135,12 +135,14 @@ export default function FolderPage({
       {/* Action Toolbar */}
       <div className="flex items-center gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 sm:h-10 text-xs sm:text-sm font-medium shadow-sm hover:shadow">
-              <Plus className="h-4 w-4 mr-2" />
-              Create
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={(
+              <Button variant="outline" size="sm" className="h-8 sm:h-10 text-xs sm:text-sm font-medium shadow-sm hover:shadow">
+                <Plus className="h-4 w-4 mr-2" />
+                Create
+              </Button>
+            )}
+          />
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => setNewFolderModalOpen(true)}>
               <FolderPlus className="h-4 w-4 mr-2" />
@@ -170,29 +172,33 @@ export default function FolderPage({
         <TooltipProvider>
           <div className="hidden sm:flex items-center border rounded-lg overflow-hidden shadow-sm bg-white ml-auto">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-10 w-10 rounded-none"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={(
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="icon"
+                    className="h-10 w-10 rounded-none"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                )}
+              />
               <TooltipContent><p>Grid view</p></TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-10 w-10 rounded-none"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={(
+                  <Button
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="icon"
+                    className="h-10 w-10 rounded-none"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                )}
+              />
               <TooltipContent><p>List view</p></TooltipContent>
             </Tooltip>
           </div>

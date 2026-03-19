@@ -39,24 +39,26 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="flex items-center gap-2 px-1.5 py-1 rounded-xl hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
-          aria-label="Open user menu"
-        >
-          <Avatar className="h-8 w-8 ring-2 ring-border ring-offset-1 ring-offset-background">
-            <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          {/* Name label — desktop only */}
-          <span className="hidden md:block text-sm font-medium text-foreground max-w-[120px] truncate">
-            {displayName}
-          </span>
-          <ChevronDown className="hidden md:block h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        </button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={(
+          <button
+            className="flex items-center gap-2 px-1.5 py-1 rounded-xl hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+            aria-label="Open user menu"
+          >
+            <Avatar className="h-8 w-8 ring-2 ring-border ring-offset-1 ring-offset-background">
+              <AvatarImage src={avatarUrl} alt={displayName} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {/* Name label — desktop only */}
+            <span className="hidden md:block text-sm font-medium text-foreground max-w-[120px] truncate">
+              {displayName}
+            </span>
+            <ChevronDown className="hidden md:block h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          </button>
+        )}
+      />
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-60 p-1.5 rounded-xl shadow-lg border border-border bg-popover text-popover-foreground">
         {/* User info header */}

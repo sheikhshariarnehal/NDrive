@@ -226,7 +226,6 @@ export default function DashboardLayout({
             side="left"
             className="p-0 w-[240px] lg:hidden"
             showCloseButton={false}
-            onOpenAutoFocus={(event) => event.preventDefault()}
           >
             <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
             {sidebarOpen ? <Sidebar /> : null}

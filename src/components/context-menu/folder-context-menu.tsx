@@ -18,13 +18,14 @@ import {
   Link,
 } from "lucide-react";
 import type { DbFolder } from "@/types/file.types";
-import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 
 interface FolderContextMenuProps {
   folder: DbFolder;
 }
 
 export function FolderContextMenu({ folder }: FolderContextMenuProps) {
+  const router = useRouter();
   const { setRenameTarget, setRenameModalOpen, setShareFolderId, setShareModalOpen } = useUIStore();
 
   const handleRename = () => {
@@ -55,16 +56,16 @@ export function FolderContextMenu({ folder }: FolderContextMenuProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="p-1 rounded-md hover:bg-muted">
-          <MoreVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={(
+          <button className="p-1 rounded-md hover:bg-muted">
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      />
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem asChild>
-          <NextLink href={`/drive/folder/${folder.id}`}>
-            <FolderOpen className="h-4 w-4 mr-2" /> Open
-          </NextLink>
+        <DropdownMenuItem onClick={() => router.push(`/drive/folder/${folder.id}`)}>
+          <FolderOpen className="h-4 w-4 mr-2" /> Open
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleShare}>
