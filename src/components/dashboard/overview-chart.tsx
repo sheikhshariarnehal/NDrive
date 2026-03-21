@@ -65,7 +65,7 @@ export default function OverviewChart({ data }: OverviewChartProps) {
         <Tooltip
            contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none", borderRadius: "8px", color: "white" }}
            itemStyle={{ color: "white" }}
-           formatter={(value: number) => [formatBytes(value), "Storage"]}
+           formatter={(value) => [formatBytes(Number(value) || 0), "Storage"]}
         />
         <Line
           type="monotone"
