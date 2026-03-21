@@ -1,8 +1,8 @@
 import MissingEnvNotice from "@/components/admin/missing-env-notice";
-import { 
+import {
   getOverviewStats,
-  getStorageAlerts,
-  getTopUserStats,
+  getGrowthTrend,
+  getRecentUploads,
 } from "@/lib/admin/queries";
 import { isMissingAdminSupabaseEnvError } from "@/lib/supabase";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
@@ -11,14 +11,14 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   let stats;
-  let alerts;
-  let topUsers;
+  let trend;
+  let recentUploads;
 
   try {
-    [stats, alerts, topUsers] = await Promise.all([
+    [stats, trend, recentUploads] = await Promise.all([
       getOverviewStats(),
-      getStorageAlerts(),
-      getTopUserStats(),
+      getGrowthTrend(30),
+      getRecentUploads(8),
     ]);
   } catch (error) {
     if (isMissingAdminSupabaseEnvError(error)) {
@@ -31,8 +31,8 @@ export default async function Dashboard() {
   return (
     <DashboardClient
       stats={stats}
-      alerts={alerts}
-      topUsers={topUsers}
+      trend={trend}
+      recentUploads={recentUploads}
     />
   );
 }
