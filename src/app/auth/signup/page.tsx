@@ -171,9 +171,8 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Column - Form */}
-      <div className="flex-1 flex flex-col justify-center py-6 px-4 sm:py-8 sm:px-6 lg:px-10 xl:px-12 bg-background sm:bg-transparent lg:bg-background relative overflow-y-auto">
-        <div className="mx-auto w-full max-w-sm sm:max-w-md lg:max-w-[520px] xl:max-w-[560px] space-y-6 sm:bg-card sm:shadow-xl sm:shadow-black/5 sm:border sm:border-border sm:rounded-[2rem] sm:p-8 lg:bg-transparent lg:shadow-none lg:border-0 lg:rounded-none lg:p-0 my-auto">
-          
+        <div className="flex-1 flex flex-col justify-center py-4 px-4 sm:py-8 sm:px-6 lg:px-10 xl:px-12 bg-background sm:bg-background/95 relative overflow-y-auto before:absolute before:inset-0 before:-z-10 before:block before:bg-[radial-gradient(ellipse_at_top,var(--tw-colors-emerald-900)_0%,transparent_70%)] before:opacity-20 sm:before:opacity-10 dark:before:opacity-30 sm:dark:before:opacity-20">
+          <div className="mx-auto w-full max-w-sm sm:max-w-md lg:max-w-[480px] xl:max-w-[500px] space-y-6 bg-card/60 sm:bg-card shadow-2xl shadow-emerald-900/5 sm:shadow-black/10 border border-border/50 sm:border-border/40 rounded-[2rem] p-6 sm:p-8 backdrop-blur-2xl sm:backdrop-blur-xl relative my-auto mt-4 sm:mt-auto">
           {/* Mobile/Tablet Logo */}
           <div className="flex lg:hidden items-center justify-center gap-2 mb-2 sm:mb-6">
             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center shadow-md">
