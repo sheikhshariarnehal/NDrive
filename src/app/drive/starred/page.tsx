@@ -7,10 +7,11 @@ import { Star } from "lucide-react";
 import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 import { GridViewSkeleton } from "@/components/skeletons/grid-view-skeleton";
 import { ListViewSkeleton } from "@/components/skeletons/list-view-skeleton";
+import { ViewModeToggle } from "@/components/file-view/view-mode-toggle";
 
 export default function StarredPage() {
-  const { files, dataLoaded } = useFilesStore();
-  const viewMode = useEffectiveViewMode();
+  const { files, dataLoaded, viewMode, setViewMode } = useFilesStore();
+  const effectiveViewMode = useEffectiveViewMode();
   const starredFiles = files.filter((f) => f.is_starred);
 
   if (!dataLoaded) {
@@ -28,15 +29,18 @@ export default function StarredPage() {
 
   return (
     <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Starred Files</h1>
-        <p className="text-xs sm:text-sm text-[#5f6368]">
-          Files you&apos;ve marked as favorites
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Starred Files</h1>
+          <p className="text-xs sm:text-sm text-[#5f6368]">
+            Files you&apos;ve marked as favorites
+          </p>
+        </div>
+        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} className="mt-0.5" />
       </div>
 
       {starredFiles.length > 0 ? (
-        viewMode === "grid" ? (
+        effectiveViewMode === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
             {starredFiles.map((file) => (
               <FileCard key={file.id} file={file} />

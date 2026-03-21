@@ -11,11 +11,12 @@ import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 import { GridViewSkeleton } from "@/components/skeletons/grid-view-skeleton";
 import { ListViewSkeleton } from "@/components/skeletons/list-view-skeleton";
 import type { DbFile } from "@/types/file.types";
+import { ViewModeToggle } from "@/components/file-view/view-mode-toggle";
 
 export default function RecentPage() {
   const { user, guestSessionId } = useAuth();
-  const { files, dataLoaded, mergeFiles } = useFilesStore();
-  const viewMode = useEffectiveViewMode();
+  const { files, dataLoaded, mergeFiles, viewMode, setViewMode } = useFilesStore();
+  const effectiveViewMode = useEffectiveViewMode();
 
   useEffect(() => {
     // The layout preloads a capped set. On the Recent page, fetch remaining
@@ -103,15 +104,18 @@ export default function RecentPage() {
 
   return (
     <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Recent Files</h1>
-        <p className="text-xs sm:text-sm text-[#5f6368]">
-          Your most recently modified files
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Recent Files</h1>
+          <p className="text-xs sm:text-sm text-[#5f6368]">
+            Your most recently modified files
+          </p>
+        </div>
+        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} className="mt-0.5" />
       </div>
 
       {recentFiles.length > 0 ? (
-        viewMode === "grid" ? (
+        effectiveViewMode === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
             {recentFiles.map((file) => (
               <FileCard key={file.id} file={file} />

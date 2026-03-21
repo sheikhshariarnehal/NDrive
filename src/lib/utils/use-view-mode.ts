@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect } from "react";
 import { useFilesStore } from "@/store/files-store";
 import type { ViewMode } from "@/types/file.types";
 
-const MOBILE_BREAKPOINT = 768;
-
 /**
- * Returns the effective view mode. Forces "grid" on mobile screens.
+ * Returns the effective view mode from persisted/store state.
  *
  * The inline script in layout.tsx sets `data-view-mode` on &lt;html&gt; before
  * the first paint, so the correct CSS-toggled skeleton shows immediately.
@@ -15,7 +13,6 @@ const MOBILE_BREAKPOINT = 768;
  */
 export function useEffectiveViewMode(): ViewMode {
   const storeMode = useFilesStore((s) => s.viewMode);
-  const [isMobile, setIsMobile] = useState(false);
 
   // Sync Zustand store from localStorage before paint.
   // Only writes to the store (not DOM/localStorage — the inline script
@@ -27,14 +24,5 @@ export function useEffectiveViewMode(): ViewMode {
     }
   }, []);
 
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    setIsMobile(mql.matches);
-    
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
-
-  return isMobile ? "grid" : storeMode;
+  return storeMode;
 }
