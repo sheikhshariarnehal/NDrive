@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import { useAuthAction } from "@/components/auth/use-auth-action";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SignUpPage() {
@@ -19,9 +20,8 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { error, setError, isLoading, run } = useAuthAction("Sign up failed");
   const router = useRouter();
   const supabase = createClient();
 
@@ -34,9 +34,7 @@ export default function SignUpPage() {
       return;
     }
 
-    setIsLoading(true);
-
-    try {
+    await run(async () => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -53,11 +51,7 @@ export default function SignUpPage() {
       }
 
       setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign up failed");
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   if (success) {

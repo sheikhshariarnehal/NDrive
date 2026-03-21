@@ -9,15 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import { useAuthAction } from "@/components/auth/use-auth-action";
 import { Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isMagicLink, setIsMagicLink] = useState(false);
+  const { error, setError, isLoading, run } = useAuthAction("Login failed");
   const router = useRouter();
   const supabase = createClient();
 
@@ -30,10 +30,7 @@ export function LoginForm() {
 
   const handleEmailLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
+    await run(async () => {
       if (isMagicLink) {
         const { error } = await supabase.auth.signInWithOtp({ email });
         if (error) throw error;
@@ -47,11 +44,7 @@ export function LoginForm() {
       });
       if (error) throw error;
       router.push("/drive");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   const handleGuestMode = () => {
@@ -164,7 +157,7 @@ export function LoginForm() {
           </form>
 
           <p className="text-center text-[13px] text-zinc-400 mt-4">
-            Don\'t have an account?{" "}
+            Don't have an account?{" "}
             <Link href="/auth/signup" prefetch={false} className="text-white font-medium hover:underline">
               Sign up
             </Link>

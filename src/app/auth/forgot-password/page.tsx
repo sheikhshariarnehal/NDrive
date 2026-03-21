@@ -8,31 +8,24 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthAction } from "@/components/auth/use-auth-action";
 import { ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { error, isLoading, run } = useAuthAction("Failed to send reset email");
   const supabase = createClient();
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
+    await run(async () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
       if (error) throw error;
       setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send reset email");
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   if (success) {
