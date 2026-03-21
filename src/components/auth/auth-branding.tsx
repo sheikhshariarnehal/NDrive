@@ -1,7 +1,7 @@
 "use client";
 import NextImage from "next/image";
 import { ShaderBackground } from "@/components/auth/shader-background";
-import { ShieldCheck, Zap, Server } from "lucide-react";
+import { ShieldCheck, Zap, HardDrive } from "lucide-react";
 
 export function AuthBranding() {
   return (
@@ -63,10 +63,10 @@ export function AuthBranding() {
           </div>
           
           <div className="flex flex-col items-center gap-4 group cursor-default">
-            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900/50 border border-white/5 backdrop-blur-md shadow-inner transition-all duration-300 group-hover:bg-purple-500/10 group-hover:border-purple-500/30 group-hover:-translate-y-1">
-              <Server className="w-6 h-6 text-zinc-400 group-hover:text-purple-400 transition-colors" />
+            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900/50 border border-white/5 backdrop-blur-md shadow-inner transition-all duration-300 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 group-hover:-translate-y-1">
+              <HardDrive className="w-6 h-6 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
             </div>
-            <span className="text-[10px] font-bold text-zinc-500 tracking-[0.2em] uppercase group-hover:text-zinc-300 transition-colors">Globally Synced</span>
+            <span className="text-[10px] font-bold text-zinc-500 tracking-[0.2em] uppercase group-hover:text-zinc-300 transition-colors">Unlimited Storage</span>
           </div>
         </div>
       </div>
