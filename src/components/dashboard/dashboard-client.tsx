@@ -89,7 +89,7 @@ export function DashboardClient({ stats, trend, recentUploads }: DashboardClient
             <CardDescription>Latest file uploads</CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentActivity uploads={recentUploads} />
+            <RecentActivity items={recentUploads} />
           </CardContent>
         </Card>
       </div>
