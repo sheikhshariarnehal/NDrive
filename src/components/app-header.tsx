@@ -101,7 +101,10 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2 border-l border-border pl-3 sm:gap-3 sm:pl-4">
-          <button className="relative w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+          <button 
+            aria-label="Notifications"
+            className="relative w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
             <Bell className="h-[18px] w-[18px]" />
             <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-background" />
           </button>

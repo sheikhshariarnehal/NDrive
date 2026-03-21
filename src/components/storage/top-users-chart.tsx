@@ -28,7 +28,7 @@ export default function TopUsersChart({ data }: TopUsersChartProps) {
   return (
     <ResponsiveContainer width="100%" height={chartHeight}>
       <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 10, left: 6, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#333" opacity={0.1} />
+        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--foreground, #ffffff)" opacity={0.1} />
         <XAxis type="number" hide />
         <YAxis
           type="category"

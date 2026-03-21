@@ -39,7 +39,7 @@ export default function OverviewTopUploadersChart({ data }: OverviewTopUploaders
               return [numericValue, keyLabel];
             }}
           />
-          <Bar dataKey="gb" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} maxBarSize={22} />
+          <Bar dataKey="gb" fill="var(--chart-1, #ffffff)" radius={[0, 4, 4, 0]} maxBarSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </div>

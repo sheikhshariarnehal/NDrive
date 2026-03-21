@@ -128,7 +128,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="mt-auto shrink-0 p-3 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-10">
+      <SidebarFooter className="mt-auto shrink-0 p-3 pt-2 pb-[calc(2rem+env(safe-area-inset-bottom))] md:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton render={<Link href="/logout" />} tooltip="Logout" className="h-9 gap-2.5 rounded-md text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive">

@@ -23,11 +23,29 @@ export default function OverviewUploadVolumeChart({ data }: OverviewUploadVolume
 
   return (
     <div className="h-[240px] w-full sm:h-[280px] lg:h-[320px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(136,136,136,0.2)" vertical={false} />
+      <div className="mb-2 flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--chart-2,#00bb7f)]" />
+          <span>Uploads</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--chart-1,#3b82f6)]" />
+          <span>Volume (GB)</span>
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height="92%">
+        <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: -8, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--foreground, #ffffff)" opacity={0.12} vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={18} tick={{ fontSize: 12, fill: "#888888" }} />
-          <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#888888" }} width={36} />
+          <YAxis
+            yAxisId="left"
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
+            tick={{ fontSize: 12, fill: "#888888" }}
+            width={36}
+          />
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -38,11 +56,38 @@ export default function OverviewUploadVolumeChart({ data }: OverviewUploadVolume
             tickFormatter={(value) => `${value}G`}
           />
           <Tooltip
-            contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none", borderRadius: "8px", color: "white" }}
+            contentStyle={{ backgroundColor: "rgba(0,0,0,0.86)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", color: "white" }}
             itemStyle={{ color: "white" }}
+            labelStyle={{ color: "white", fontWeight: 600 }}
+            formatter={(value, name) => {
+              if (name === "gb") {
+                if (value == null || Number.isNaN(Number(value))) return ["-", "Volume"];
+                return [`${Number(value).toFixed(2)} GB`, "Volume"];
+              }
+
+              if (name === "uploads") {
+                return [Number(value ?? 0).toLocaleString(), "Uploads"];
+              }
+
+              return [String(value ?? "-"), String(name ?? "")];
+            }}
           />
-          <Bar yAxisId="left" dataKey="uploads" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} maxBarSize={20} />
-          <Line yAxisId="right" type="monotone" dataKey="gb" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={false} />
+          <Bar 
+            yAxisId="left" 
+            dataKey="uploads" 
+            fill="var(--chart-2, #00bb7f)" 
+            fillOpacity={0.95} 
+            radius={[4, 4, 0, 0]} 
+            maxBarSize={18} 
+          />
+          <Bar 
+            yAxisId="right"
+            dataKey="gb"
+            fill="var(--chart-1, #3b82f6)"
+            fillOpacity={0.95}
+            radius={[4, 4, 0, 0]}
+            maxBarSize={18}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

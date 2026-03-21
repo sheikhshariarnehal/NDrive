@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
+import { formatBytes } from "@/lib/admin/format";
 
 type OverviewChartPoint = {
   date: string;
@@ -36,13 +37,13 @@ export default function OverviewChart({ data }: OverviewChartProps) {
   }));
 
   return (
-    <div className="h-[220px] w-full sm:h-[280px] lg:h-[350px]">
+    <div className="h-[250px] w-full sm:h-[300px] lg:h-[350px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
+        <LineChart
           data={chartData}
-          margin={{ top: 8, right: isMobile ? 8 : 16, left: isMobile ? -14 : 0, bottom: 0 }}
-          barCategoryGap={isMobile ? "28%" : "20%"}
+          margin={{ top: 12, right: isMobile ? 12 : 24, left: isMobile ? -24 : -12, bottom: 0 }}
         >
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" opacity={0.2} />
         <XAxis
           dataKey="name"
           stroke="#888888"
@@ -50,29 +51,34 @@ export default function OverviewChart({ data }: OverviewChartProps) {
           tickLine={false}
           axisLine={false}
           interval="preserveStartEnd"
-          minTickGap={isMobile ? 22 : 14}
-          tickMargin={8}
+          minTickGap={isMobile ? 22 : 32}
+          tickMargin={12}
         />
         <YAxis
           stroke="#888888"
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `${value}`}
-          width={isMobile ? 34 : 42}
+          tickFormatter={(value) => formatBytes(value).replace(' ', '')}
+          width={isMobile ? 50 : 60}
         />
         <Tooltip
            contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none", borderRadius: "8px", color: "white" }}
            itemStyle={{ color: "white" }}
+            formatter={(value) => {
+             const bytes = typeof value === "number" ? value : Number(value ?? 0);
+             return [formatBytes(Number.isFinite(bytes) ? bytes : 0), "Storage"];
+            }}
         />
-        <Bar
+        <Line
+          type="monotone"
           dataKey="total"
-          fill="currentColor"
-          radius={[4, 4, 0, 0]}
-          className="fill-primary"
-          maxBarSize={isMobile ? 14 : 24}
+          stroke="#3b82f6"
+          strokeWidth={3}
+          dot={false}
+          activeDot={{ r: 6, fill: "#3b82f6" }}
         />
-        </BarChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
