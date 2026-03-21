@@ -1,13 +1,14 @@
 "use client";
 
+import { AuthBranding } from "@/components/auth/auth-branding";
+
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft } from "lucide-react";
-import NextImage from "next/image";
+import { ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -36,20 +37,20 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-dvh bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col justify-center py-8 px-4 sm:px-6">
-        <div className="w-full max-w-sm mx-auto text-center space-y-5">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-green-100 rounded-full">
-            <Mail className="h-6 w-6 text-green-600" />
+      <div className="min-h-dvh flex items-center justify-center bg-[#161616] px-4 font-sans text-white">
+        <div className="w-full max-w-[360px] text-center space-y-6 bg-[#242424] p-8 rounded-xl border border-zinc-800">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-[#0ea5e9]/20 rounded-full mx-auto border border-[#0ea5e9]/40">
+            <svg className="w-6 h-6 text-[#0ea5e9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Check your email</h2>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            We&apos;ve sent a reset link to{" "}
-            <strong className="text-gray-800 break-all">{email}</strong>.
+          <h2 className="text-[22px] font-semibold tracking-tight text-white">Check your email</h2>
+          <p className="text-[13px] text-zinc-400 leading-relaxed">
+            We've sent a reset link to <strong className="text-white break-all">{email}</strong>.
             Check your inbox and follow the link.
           </p>
-          <Link href="/auth/login">
-            <Button variant="outline" className="w-full h-11">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+          <Link href="/auth/login" className="block outline-none mt-2">
+            <Button className="w-full h-10 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border-0 transition-colors text-[13px] font-medium">
               Back to Sign In
             </Button>
           </Link>
@@ -59,57 +60,67 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col justify-center py-8 px-4 sm:px-6">
-      <div className="w-full max-w-sm mx-auto space-y-5">
+    <div className="min-h-dvh flex font-sans bg-[#161616]">
+      <AuthBranding />
 
-        {/* Logo */}
-        <div className="text-center">
-          <NextImage src="/logo.webp" alt="CloudVault" width={52} height={52} className="mx-auto mb-3" priority />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Reset password</h1>
-          <p className="text-sm text-gray-500 mt-1">We&apos;ll send a reset link to your email</p>
-        </div>
+      {/* Right Column - Authentication Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 bg-[#161616] text-white overflow-y-auto">
+        <div className="mx-auto w-full max-w-[360px] space-y-7 pb-20 mt-10">
+          <div className="text-center space-y-2">
+            <h1 className="text-[26px] font-semibold tracking-tight text-white">
+              Reset password
+            </h1>
+            <p className="text-[13px] text-zinc-400">
+              We'll send a recovery link to your email.
+            </p>
+          </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-7 space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-              {error}
-            </div>
-          )}
+          <div className="space-y-6">
+            {error && (
+              <div className="p-3 rounded-md text-xs border font-medium bg-red-950/20 border-red-900/30 text-red-500 text-center">
+                {error}
+              </div>
+            )}
 
-          <form onSubmit={handleResetPassword} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="h-11 text-base sm:text-sm"
-              />
-            </div>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[13px] font-semibold text-zinc-200">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="hello@app.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="h-10 bg-[#242424] border-zinc-800/80 text-white placeholder:text-zinc-500 focus:border-[#2563eb] focus-visible:ring-1 focus-visible:ring-[#2563eb] rounded-md transition-colors text-[13px]"
+                />
+              </div>
 
-            <Button
-              type="submit"
-              className="w-full h-11 bg-gray-900 hover:bg-gray-800 font-semibold text-sm"
-              disabled={isLoading}
+              <Button
+                type="submit"
+                className="w-full h-10 mt-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium rounded-md transition-colors text-[13px] border-0"
+                disabled={isLoading}
+              >
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </Button>
+            </form>
+
+            <Link
+              href="/auth/login"
+              className="flex items-center justify-center gap-1.5 text-[13px] text-zinc-400 hover:text-white transition-colors mt-6 font-medium"
             >
-              <Mail className="h-4 w-4 mr-2" />
-              {isLoading ? "Sending..." : "Send Reset Link"}
-            </Button>
-          </form>
-        </div>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Sign In
+            </Link>
 
-        <Link
-          href="/auth/login"
-          className="flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Sign In
-        </Link>
+            <div className="pt-20">
+              <p className="text-center text-[11px] text-zinc-600">
+                © CloudVault · Privacy · Terms
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

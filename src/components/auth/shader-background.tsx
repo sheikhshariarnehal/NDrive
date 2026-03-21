@@ -1,8 +1,7 @@
 "use client";
-
 import React, { useEffect, useRef } from 'react';
 
-const ShaderBackground = () => {
+export const ShaderBackground = ({ className = "absolute inset-0 w-full h-full pointer-events-none z-0" }: { className?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Vertex shader source code
@@ -79,8 +78,8 @@ const ShaderBackground = () => {
       space.x += random(space.y * warpFrequency + iTime * warpSpeed + 2.0) * warpAmplitude * horizontalFade;
 
       vec4 lines = vec4(0.0);
-      vec4 bgColor1 = vec4(0.02, 0.02, 0.05, 1.0); // Slightly darker for pro look
-      vec4 bgColor2 = vec4(0.05, 0.05, 0.1, 1.0);
+      vec4 bgColor1 = vec4(0.1, 0.1, 0.3, 1.0);
+      vec4 bgColor2 = vec4(0.3, 0.1, 0.5, 1.0);
 
       for(int l = 0; l < linesPerGroup; l++) {
         float normalizedLineIndex = float(l) / float(linesPerGroup);
@@ -113,7 +112,6 @@ const ShaderBackground = () => {
   const loadShader = (gl: WebGLRenderingContext, type: number, source: string) => {
     const shader = gl.createShader(type);
     if (!shader) return null;
-    
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
@@ -135,7 +133,7 @@ const ShaderBackground = () => {
 
     const shaderProgram = gl.createProgram();
     if (!shaderProgram) return null;
-
+    
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
     gl.linkProgram(shaderProgram);
@@ -160,7 +158,7 @@ const ShaderBackground = () => {
 
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     if (!shaderProgram) return;
-
+    
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     const positions = [
@@ -183,11 +181,11 @@ const ShaderBackground = () => {
     };
 
     const resizeCanvas = () => {
-      // Resize to match parent container rather than window
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
+      // Resize to match container
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (rect) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
       } else {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -200,7 +198,7 @@ const ShaderBackground = () => {
 
     let startTime = Date.now();
     let animationFrameId: number;
-
+    
     const render = () => {
       const currentTime = (Date.now() - startTime) / 1000;
 
@@ -209,12 +207,8 @@ const ShaderBackground = () => {
 
       gl.useProgram(programInfo.program);
 
-      if (programInfo.uniformLocations.resolution) {
-        gl.uniform2f(programInfo.uniformLocations.resolution, canvas.width, canvas.height);
-      }
-      if (programInfo.uniformLocations.time) {
-        gl.uniform1f(programInfo.uniformLocations.time, currentTime);
-      }
+      gl.uniform2f(programInfo.uniformLocations.resolution, canvas.width, canvas.height);
+      gl.uniform1f(programInfo.uniformLocations.time, currentTime);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
       gl.vertexAttribPointer(
@@ -231,17 +225,15 @@ const ShaderBackground = () => {
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [vsSource, fsSource]);
+  }, []);
 
   return (
-    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover" />
+    <canvas ref={canvasRef} className={className} />
   );
 };
-
-export default ShaderBackground;
