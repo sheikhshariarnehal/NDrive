@@ -1,52 +1,21 @@
 "use client";
 import NextImage from "next/image";
 import { ShieldCheck, Zap, HardDrive } from "lucide-react";
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-
-const ShaderAnimation = dynamic(
-  () => import("@/components/ui/shader-lines").then((mod) => mod.ShaderAnimation),
-  { ssr: false }
-);
+import { ShaderAnimation } from "@/components/ui/shader-lines";
 
 export function AuthBranding() {
-  const [showShader, setShowShader] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-    if (!isDesktop) return;
-
-    let timeoutId: number | null = null;
-    const idle = (window as Window & { requestIdleCallback?: (cb: IdleRequestCallback) => number }).requestIdleCallback;
-
-    if (idle) {
-      const idleId = idle(() => setShowShader(true));
-      return () => {
-        window.cancelIdleCallback?.(idleId);
-      };
-    }
-
-    timeoutId = window.setTimeout(() => setShowShader(true), 250);
-    return () => {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, []);
 
   return (
     <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-[#09090b] text-white relative overflow-hidden text-center selection:bg-blue-500/30">
       {/* WebGL Shader Animation */}
-      {showShader ? <ShaderAnimation /> : null}
+      <ShaderAnimation />
 
       {/* Modern Vignette Overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#09090b_100%)] pointer-events-none z-0"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 pointer-events-none z-0 mix-blend-overlay"></div>
 
       {/* Glassmorphic Content Container */}
-      <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl px-12 animate-in fade-in zoom-in-95 duration-1000">
+      <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl px-12 animate-in fade-in zoom-in-[0.98] duration-300">
         {/* Floating Logo Card */}
         <div className="relative mb-10 group">
           {/* Animated Glow Behind Logo */}

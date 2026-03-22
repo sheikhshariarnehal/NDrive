@@ -22,15 +22,12 @@ export function ShaderAnimation() {
     let isActive = true
     let resizeHandler: (() => void) | null = null
 
-    const startTimer = window.setTimeout(() => {
-      void initThreeJS((cleanup) => {
-        resizeHandler = cleanup
-      })
-    }, 180)
+    void initThreeJS((cleanup) => {
+      resizeHandler = cleanup
+    })
 
     return () => {
       isActive = false
-      window.clearTimeout(startTimer)
 
       if (resizeHandler) {
         resizeHandler()
