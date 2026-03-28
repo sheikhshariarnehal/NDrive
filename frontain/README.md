@@ -113,7 +113,7 @@ graph TD
 | AUTH-2 | OAuth login (providers configured in Supabase) | P1 |
 | AUTH-3 | Guest session created automatically on first visit; stored in `localStorage`; expires after 90 days | P0 |
 | AUTH-4 | Guest-to-registered migration: files and folders are re-associated to the new `user_id` | P1 |
-| AUTH-5 | Middleware (`file:frontain/src/middleware.ts`) protects `/dashboard` routes; unauthenticated users are redirected to `/auth/login` | P0 |
+| AUTH-5 | Middleware (`file:frontain/src/middleware.ts`) protects `/drive` routes; unauthenticated users are redirected to `/auth/login` | P0 |
 
 ### 4.2 File Upload
 
@@ -184,12 +184,12 @@ graph TD
 | ID | Requirement | Priority |
 |---|---|---|
 | DSH-1 | **My Drive** — root-level files and folders, tabbed Recent/Starred | P0 |
-| DSH-2 | **Folder view** — contents of a specific folder at `/dashboard/folder/[id]` | P0 |
-| DSH-3 | **Recent** — all files sorted by `updated_at` desc at `/dashboard/recent` | P0 |
-| DSH-4 | **Starred** — all starred files at `/dashboard/starred` | P0 |
-| DSH-5 | **Shared** — files with active share links at `/dashboard/shared` | P0 |
-| DSH-6 | **Trash** — soft-deleted files and folders at `/dashboard/trash` | P0 |
-| DSH-7 | **Settings** — user profile and preferences at `/dashboard/settings` | P1 |
+| DSH-2 | **Folder view** — contents of a specific folder at `/drive/folder/[id]` | P0 |
+| DSH-3 | **Recent** — all files sorted by `updated_at` desc at `/drive/recent` | P0 |
+| DSH-4 | **Starred** — all starred files at `/drive/starred` | P0 |
+| DSH-5 | **Shared** — files with active share links at `/drive/shared` | P0 |
+| DSH-6 | **Trash** — soft-deleted files and folders at `/drive/trash` | P0 |
+| DSH-7 | **Settings** — user profile and preferences at `/drive/settings` | P1 |
 | DSH-8 | Grid view and list view toggle (persisted in Zustand `ui-store`) | P0 |
 | DSH-9 | Suggested files section (most recently accessed, up to 6 files) | P1 |
 

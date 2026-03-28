@@ -93,8 +93,8 @@ export function FileContextMenu({ file }: FileContextMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="p-1.5 rounded-full hover:bg-accent transition-colors duration-150">
-          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+        <button className="p-1.5 rounded-full hover:bg-accent transition-colors duration-150" aria-label={`More actions for ${file.name}`}>
+          <MoreVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

@@ -84,7 +84,6 @@ export function FileCard({ file, priority = false }: FileCardProps) {
 
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(priority);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
@@ -92,27 +91,6 @@ export function FileCard({ file, priority = false }: FileCardProps) {
 
   const onImgLoad = useCallback(() => setImgLoaded(true), []);
   const onImgError = useCallback(() => setImgError(true), []);
-
-  // IntersectionObserver — only load thumbnails when the card enters the viewport
-  useEffect(() => {
-    if (priority || !hasThumbnail || !thumbnailSrc) return;
-
-    const el = cardRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" } // start loading 200px before visible
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasThumbnail, thumbnailSrc]);
 
   return (
     <div
@@ -146,7 +124,7 @@ export function FileCard({ file, priority = false }: FileCardProps) {
         </div>
 
         {/* Thumbnail image — fades in over the placeholder */}
-        {hasThumbnail && thumbnailSrc && isVisible && (
+        {hasThumbnail && thumbnailSrc && (
           <img
             src={thumbnailSrc}
             alt=""

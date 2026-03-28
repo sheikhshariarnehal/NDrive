@@ -29,7 +29,14 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var v=localStorage.getItem('viewMode');if(v==='list'){document.documentElement.setAttribute('data-view-mode','list')}else{document.documentElement.setAttribute('data-view-mode','grid')}}catch(e){document.documentElement.setAttribute('data-view-mode','grid')}`,
+          }}
+        />
+        <style dangerouslySetInnerHTML={{ __html: `.skeleton-list{display:none}.skeleton-grid{display:block}html[data-view-mode="list"] .skeleton-list{display:block}html[data-view-mode="list"] .skeleton-grid{display:none}` }} />
         <SidebarProvider>
           <AppSidebar />
           <div className="flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-muted/20">

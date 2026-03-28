@@ -51,7 +51,7 @@ export const useFilesStore = create<FilesState>((set) => ({
   files: [],
   folders: [],
   uploadQueue: [],
-  viewMode: "list",
+  viewMode: "grid",
   selectedFiles: [],
   currentFolderId: null,
   isLoading: false,
@@ -153,11 +153,7 @@ export const useFilesStore = create<FilesState>((set) => ({
   setViewMode: (mode) => {
     try {
       localStorage.setItem("viewMode", mode);
-      if (mode === "grid") {
-        document.documentElement.setAttribute("data-view-mode", "grid");
-      } else {
-        document.documentElement.removeAttribute("data-view-mode");
-      }
+      document.documentElement.setAttribute("data-view-mode", mode);
     } catch {}
     set({ viewMode: mode });
   },

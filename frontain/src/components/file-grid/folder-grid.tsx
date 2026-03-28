@@ -21,6 +21,7 @@ export function FolderGrid({ folders }: FolderGridProps) {
         >
           <Link
             href={`/drive/folder/${folder.id}`}
+            prefetch={false}
             className="flex items-center gap-3 flex-1 min-w-0"
           >
             <Folder

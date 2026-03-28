@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
 import { useDownloadStore } from "@/store/download-store";
@@ -44,14 +46,20 @@ function GDriveCheckbox({
   indeterminate,
   onChange,
   className = "",
+  label = "Select item",
 }: {
   checked: boolean;
   indeterminate?: boolean;
   onChange: (e: React.MouseEvent) => void;
   className?: string;
+  label?: string;
 }) {
   return (
     <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? "mixed" : checked}
+      aria-label={label}
       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(e); }}
       className={`w-[18px] h-[18px] rounded-sm border-2 flex items-center justify-center transition-colors duration-75 ${
         checked || indeterminate
@@ -60,8 +68,8 @@ function GDriveCheckbox({
       } ${className}`}
       data-no-preview
     >
-      {checked && <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
-      {indeterminate && !checked && <Minus className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
+      {checked && <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} aria-hidden="true" />}
+      {indeterminate && !checked && <Minus className="h-3 w-3 text-primary-foreground" strokeWidth={3} aria-hidden="true" />}
     </button>
   );
 }
@@ -190,34 +198,37 @@ function TopActionBar({
       <div
         className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-3 bg-[#e8f0fe] rounded-t-xl border-b border-[#c2d9f5] overflow-x-auto scrollbar-none"
         style={{ height: FILTER_BAR_HEIGHT }}
+        role="toolbar"
+        aria-label="Selection actions"
       >
         <button
           onClick={onClearSelection}
+          aria-label="Clear selection"
           className="p-1.5 sm:p-2 rounded-full hover:bg-black/5 transition-colors flex-shrink-0"
         >
-          <X className="h-5 w-5 text-[#1a73e8]" />
+          <X className="h-5 w-5 text-[#1a73e8]" aria-hidden="true" />
         </button>
-        <span className="text-[13px] sm:text-[14px] font-medium text-[#1a73e8] ml-0.5 sm:ml-1 mr-2 sm:mr-4 whitespace-nowrap flex-shrink-0">
+        <span className="text-[13px] sm:text-[14px] font-medium text-[#1a73e8] ml-0.5 sm:ml-1 mr-2 sm:mr-4 whitespace-nowrap flex-shrink-0" aria-live="polite">
           {selectionCount} selected
         </span>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button onClick={onBulkShare} title="Share" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <Users className="h-5 w-5 text-[#5f6368]" />
+        <div className="flex items-center gap-0.5 flex-shrink-0" role="group" aria-label="Bulk actions">
+          <button onClick={onBulkShare} aria-label="Share selected items" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <Users className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
-          <button onClick={onBulkDownload} title="Download" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <Download className="h-5 w-5 text-[#5f6368]" />
+          <button onClick={onBulkDownload} aria-label="Download selected items" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <Download className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
-          <button onClick={onBulkMove} title="Move to" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <FolderInput className="h-5 w-5 text-[#5f6368]" />
+          <button onClick={onBulkMove} aria-label="Move selected items" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <FolderInput className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
-          <button onClick={onBulkDelete} title="Move to trash" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <Trash2 className="h-5 w-5 text-[#5f6368]" />
+          <button onClick={onBulkDelete} aria-label="Move selected items to trash" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <Trash2 className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
-          <button onClick={onBulkCopyLink} title="Copy link" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <LinkIcon className="h-5 w-5 text-[#5f6368]" />
+          <button onClick={onBulkCopyLink} aria-label="Copy link to selected items" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <LinkIcon className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
-          <button title="More actions" className="p-2 rounded-full hover:bg-black/5 transition-colors">
-            <MoreVertical className="h-5 w-5 text-[#5f6368]" />
+          <button aria-label="More actions" className="p-2 rounded-full hover:bg-black/5 transition-colors">
+            <MoreVertical className="h-5 w-5 text-[#5f6368]" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -269,7 +280,7 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
 
   return (
     <div
-      className={`group relative flex items-center h-12 border-b border-border cursor-pointer select-none transition-colors duration-75 ${
+      className={`folder-list-row group relative flex items-center h-12 border-b border-border cursor-pointer select-none transition-colors duration-75 ${
         isSelected ? "bg-accent/80 hover:bg-accent" : "hover:bg-accent/40"
       }`}
       role="row"
@@ -289,7 +300,7 @@ function FolderRow({ folder, isSelected, onToggle }: { folder: DbFolder; isSelec
         <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-75 ${
           isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}>
-          <GDriveCheckbox checked={isSelected} onChange={() => onToggle(folder.id)} />
+          <GDriveCheckbox checked={isSelected} onChange={() => onToggle(folder.id)} label={`Select folder ${folder.name}`} />
         </div>
       </div>
 
@@ -375,6 +386,7 @@ function FileRow({
   index: number;
   style: React.CSSProperties;
 } & RowProps) {
+  const pathname = usePathname();
   const file = files[index];
   if (!file) return null;
 
@@ -393,6 +405,13 @@ function FileRow({
       return;
     }
 
+    // In Recent view, opening a file should take users to its parent folder
+    // when available so they can continue browsing folder context.
+    if (pathname === "/drive/recent" && file.folder_id) {
+      window.location.href = `/drive/folder/${file.folder_id}`;
+      return;
+    }
+
     if (isPdf) {
       window.open(getFileUrl(file.id, file.name), "_blank");
     } else {
@@ -404,7 +423,7 @@ function FileRow({
     <div
       style={style}
       className={`
-        group relative flex items-center h-12 border-b border-border
+        file-list-row group relative flex items-center h-12 border-b border-border
         cursor-pointer select-none transition-colors duration-75
         ${isSelected ? "bg-accent/80 hover:bg-accent" : "hover:bg-accent/40"}
       `}
@@ -427,6 +446,7 @@ function FileRow({
           <GDriveCheckbox
             checked={isSelected}
             onChange={(e) => { e.stopPropagation(); toggleFileSelection(file.id); }}
+            label={`Select file ${file.name}`}
           />
         </div>
       </div>
@@ -503,36 +523,39 @@ function FileRow({
             isSelected ? "bg-accent" : "bg-accent/50"
           }`}
         data-no-preview
+        role="group"
+        aria-label="Quick actions"
       >
         <button
           onClick={(e) => { e.stopPropagation(); handleShare(file); }}
-          title="Share"
+          aria-label={`Share ${file.name}`}
           className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Users className="h-[18px] w-[18px] text-muted-foreground" />
+          <Users className="h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
-          title="Download"
+          aria-label={`Download ${file.name}`}
           className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Download className="h-[18px] w-[18px] text-muted-foreground" />
+          <Download className="h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleRename(file); }}
-          title="Rename"
+          aria-label={`Rename ${file.name}`}
           className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
-          <Pencil className="h-[18px] w-[18px] text-muted-foreground" />
+          <Pencil className="h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleStar(file); }}
-          title={file.is_starred ? "Remove from starred" : "Add to starred"}
+          aria-label={file.is_starred ? `Remove ${file.name} from starred` : `Add ${file.name} to starred`}
           className="p-1.5 rounded-full hover:bg-background/80 transition-colors"
         >
           <Star
             className="h-[18px] w-[18px] text-muted-foreground"
             fill={file.is_starred ? "currentColor" : "none"}
+            aria-hidden="true"
           />
         </button>
       </div>
@@ -565,6 +588,97 @@ function SortHeaderButton({
       {label}
       {isActive && <ArrowIcon className="h-3.5 w-3.5 text-foreground" />}
     </button>
+  );
+}
+
+// ─── Virtualized File List (windowed rendering for large lists) ─────
+const VIRTUALIZE_THRESHOLD = 50; // Only virtualize when more than 50 files
+
+function VirtualizedFileList({
+  files,
+  rowProps,
+  containerRef,
+}: {
+  files: DbFile[];
+  rowProps: RowProps;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
+
+  // Find the scrollable parent after mount
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let el: HTMLElement | null = containerRef.current;
+    while (el) {
+      const overflow = window.getComputedStyle(el).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') {
+        setScrollElement(el);
+        return;
+      }
+      el = el.parentElement;
+    }
+    setScrollElement(document.documentElement);
+  }, [containerRef]);
+
+  const virtualizer = useVirtualizer({
+    count: files.length,
+    getScrollElement: useCallback(() => scrollElement, [scrollElement]),
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10, // Render 10 extra rows above/below viewport for smooth scrolling
+  });
+
+  // Force re-measure when scroll element becomes available
+  useEffect(() => {
+    if (scrollElement) {
+      virtualizer.measure();
+    }
+  }, [scrollElement, virtualizer]);
+
+  // For small lists, skip virtualization overhead
+  if (files.length <= VIRTUALIZE_THRESHOLD) {
+    return (
+      <div role="rowgroup">
+        {files.map((file, i) => (
+          <FileRow
+            key={file.id}
+            index={i}
+            style={{ height: ROW_HEIGHT }}
+            {...rowProps}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={parentRef}
+      role="rowgroup"
+      style={{
+        height: virtualizer.getTotalSize(),
+        width: '100%',
+        position: 'relative',
+      }}
+    >
+      {virtualItems.map((virtualRow) => (
+        <FileRow
+          key={files[virtualRow.index].id}
+          index={virtualRow.index}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: ROW_HEIGHT,
+            transform: `translateY(${virtualRow.start}px)`,
+          }}
+          {...rowProps}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -824,7 +938,7 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
   }
 
   return (
-    <div ref={containerRef} className="w-full mt-2 overflow-x-clip">
+    <div ref={containerRef} className="file-list-container w-full mt-2 overflow-x-clip">
       {/* ─── Sticky wrapper: filter bar + column header ───────────── */}
       <div
         className={`sticky z-10 bg-surface-white ${stickyOffsetClass ?? ""}`}
@@ -929,18 +1043,13 @@ export function FileList({ files, folders = [], topRightSlot, stickyOffset = 0, 
         </div>
       )}
 
-      {/* ─── File rows ────────────────────────────────────────────── */}
+      {/* ─── Virtualized File rows ─────────────────────────────────── */}
       {sortedFiles.length > 0 && (
-        <div role="rowgroup">
-          {sortedFiles.map((file, i) => (
-            <FileRow
-              key={file.id}
-              index={i}
-              style={{ height: ROW_HEIGHT }}
-              {...rowProps}
-            />
-          ))}
-        </div>
+        <VirtualizedFileList
+          files={sortedFiles}
+          rowProps={rowProps}
+          containerRef={containerRef}
+        />
       )}
     </div>
   );

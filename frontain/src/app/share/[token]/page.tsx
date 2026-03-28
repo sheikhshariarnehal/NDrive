@@ -603,6 +603,9 @@ export default function SharePage() {
                   {file.name}
                 </h1>
                 <p className="text-xs text-white/50">
+                  Shared content &middot; {formatFileSize(file.size_bytes)}
+                </p>
+                <p className="text-xs text-white/50">
                   {formatFileSize(file.size_bytes)}
                 </p>
               </div>
@@ -777,6 +780,7 @@ export default function SharePage() {
                   </h1>
                 </div>
                 <p className="text-xs text-white/50">
+                  Shared content &middot; 
                   {folderCount > 0 &&
                     `${folderCount} folder${folderCount !== 1 ? "s" : ""}, `}
                   {fileCount} file{fileCount !== 1 ? "s" : ""} &middot;{" "}

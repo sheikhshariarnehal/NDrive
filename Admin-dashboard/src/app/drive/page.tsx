@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/app/providers/auth-provider";
 import { useFilesStore } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
 import { createClient } from "@/lib/supabase/client";
-import { FolderGrid } from "@/components/file-grid/folder-grid";
+import dynamic from "next/dynamic";
 import { FileCard } from "@/components/file-grid/file-card";
-import { FileList } from "@/components/file-list/file-list";
-import { SuggestedFiles } from "@/components/suggested-files/suggested-files";
 import { Button } from "@/components/ui/button";
+
+const FolderGrid = dynamic(() => import("@/components/file-grid/folder-grid").then(m => m.FolderGrid));
+const FileList = dynamic(() => import("@/components/file-list/file-list").then(m => m.FileList));
+const SuggestedFiles = dynamic(() => import("@/components/suggested-files/suggested-files").then(m => m.SuggestedFiles));
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -24,7 +27,12 @@ import { GridViewSkeleton } from "@/components/skeletons/grid-view-skeleton";
 import { ListViewSkeleton } from "@/components/skeletons/list-view-skeleton";
 
 export default function DashboardPage() {
+  const GRID_BATCH_SIZE = 60;
   const { user, guestSessionId } = useAuth();
+  const [recentVisibleCount, setRecentVisibleCount] = useState(GRID_BATCH_SIZE);
+  const [starredVisibleCount, setStarredVisibleCount] = useState(GRID_BATCH_SIZE);
+  const recentLoadMoreRef = useRef<HTMLDivElement>(null);
+  const starredLoadMoreRef = useRef<HTMLDivElement>(null);
   const { files, folders, viewMode, setViewMode, isLoading, searchQuery, mergeFiles, dataLoaded } =
     useFilesStore();
   const { openFilePicker } = useUIStore();
@@ -49,6 +57,16 @@ export default function DashboardPage() {
     : rootFolders, [searchQuery, folders, rootFolders]);
 
   const starredFiles = useMemo(() => files.filter((f) => f.is_starred), [files]);
+  const visibleRecentFiles = useMemo(
+    () => filteredFiles.slice(0, recentVisibleCount),
+    [filteredFiles, recentVisibleCount]
+  );
+  const visibleStarredFiles = useMemo(
+    () => starredFiles.slice(0, starredVisibleCount),
+    [starredFiles, starredVisibleCount]
+  );
+  const canLoadMoreRecent = visibleRecentFiles.length < filteredFiles.length;
+  const canLoadMoreStarred = visibleStarredFiles.length < starredFiles.length;
   
   const recentFiles = useMemo(() => [...files]
     .sort(
@@ -56,6 +74,45 @@ export default function DashboardPage() {
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     )
     .slice(0, 10), [files]);
+
+  useEffect(() => {
+    setRecentVisibleCount(GRID_BATCH_SIZE);
+    setStarredVisibleCount(GRID_BATCH_SIZE);
+  }, [searchQuery, effectiveViewMode]);
+
+  useEffect(() => {
+    if (effectiveViewMode !== "grid" || !canLoadMoreRecent) return;
+    const target = recentLoadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setRecentVisibleCount((count) => Math.min(count + GRID_BATCH_SIZE, filteredFiles.length));
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [effectiveViewMode, canLoadMoreRecent, filteredFiles.length]);
+
+  useEffect(() => {
+    if (effectiveViewMode !== "grid" || !canLoadMoreStarred) return;
+    const target = starredLoadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setStarredVisibleCount((count) => Math.min(count + GRID_BATCH_SIZE, starredFiles.length));
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [effectiveViewMode, canLoadMoreStarred, starredFiles.length]);
 
   if (isLoading || !dataLoaded) {
     return (
@@ -166,13 +223,27 @@ export default function DashboardPage() {
           <TabsContent value="recent">
             {effectiveViewMode === "grid" ? (
               filteredFiles.length > 0 ? (
+                <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                  {filteredFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 12} />
+                  {visibleRecentFiles.map((file, index) => (
+                    <FileCard key={file.id} file={file} priority={index < 4} />
                   ))}
                 </div>
+                {canLoadMoreRecent && (
+                  <div ref={recentLoadMoreRef} className="mt-4 h-10 flex items-center justify-center text-xs text-[#5f6368]">
+                    Loading more files...
+                  </div>
+                )}
+                </>
               ) : (
-                <FileList files={filteredFiles} folders={filteredFolders} />
+                filteredFolders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <h3 className="text-lg font-semibold">No files yet</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Upload files to see them in grid view
+                    </p>
+                  </div>
+                ) : null
               )
             ) : (
               <FileList
@@ -192,13 +263,25 @@ export default function DashboardPage() {
           <TabsContent value="starred">
             {effectiveViewMode === "grid" ? (
               starredFiles.length > 0 ? (
+                <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                  {starredFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 12} />
+                  {visibleStarredFiles.map((file, index) => (
+                    <FileCard key={file.id} file={file} priority={index < 4} />
                   ))}
                 </div>
+                {canLoadMoreStarred && (
+                  <div ref={starredLoadMoreRef} className="mt-4 h-10 flex items-center justify-center text-xs text-[#5f6368]">
+                    Loading more starred files...
+                  </div>
+                )}
+                </>
               ) : (
-                <FileList files={starredFiles} />
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <h3 className="text-lg font-semibold">No starred files</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Star files to keep them here in grid view
+                  </p>
+                </div>
               )
             ) : (
               <FileList

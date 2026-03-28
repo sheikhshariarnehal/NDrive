@@ -32,17 +32,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Resource hints for external origins used during startup */}
+        <link rel="preconnect" href="https://ui-avatars.com" />
+        <link rel="dns-prefetch" href="https://ui-avatars.com" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var v=localStorage.getItem('viewMode');if(v==='grid')document.documentElement.setAttribute('data-view-mode','grid')}catch(e){}`,
+            __html: `try{var v=localStorage.getItem('viewMode');if(v==='list'){document.documentElement.setAttribute('data-view-mode','list')}else{document.documentElement.setAttribute('data-view-mode','grid')}}catch(e){document.documentElement.setAttribute('data-view-mode','grid')}`,
           }}
         />
-        {/* Skeleton toggle CSS — inlined so it's available before any stylesheet loads */}
-        <style dangerouslySetInnerHTML={{ __html: `.skeleton-grid{display:none}.skeleton-list{display:block}html[data-view-mode="grid"] .skeleton-grid{display:block}html[data-view-mode="grid"] .skeleton-list{display:none}` }} />
+        {/* Skeleton toggle CSS — inlined so it's available before any stylesheet loads. Default is grid. */}
+        <style dangerouslySetInnerHTML={{ __html: `.skeleton-list{display:none}.skeleton-grid{display:block}html[data-view-mode="list"] .skeleton-list{display:block}html[data-view-mode="list"] .skeleton-grid{display:none}` }} />
         <AuthProvider>
           <TooltipProvider>
             {children}

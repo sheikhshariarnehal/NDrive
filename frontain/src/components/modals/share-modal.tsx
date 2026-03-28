@@ -23,6 +23,7 @@ import {
   LogIn,
   Globe,
   RotateCcw,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -38,9 +39,11 @@ export function ShareModal() {
   const { files, folders } = useFilesStore();
   const { user } = useAuth();
   const [shareLink, setShareLink] = useState("");
+  const [shareLinkId, setShareLinkId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRevoked, setIsRevoked] = useState(false);
 
   const file = shareFileId ? files.find((f) => f.id === shareFileId) : null;
   const folder = shareFolderId ? folders.find((f) => f.id === shareFolderId) : null;
@@ -59,7 +62,9 @@ export function ShareModal() {
     if (!shareFileId && !shareFolderId) return;
     setIsLoading(true);
     setShareLink("");
+    setShareLinkId(null);
     setError(null);
+    setIsRevoked(false);
 
     try {
       const body: Record<string, unknown> = { userId: user?.id, regenerate };
@@ -79,6 +84,7 @@ export function ShareModal() {
 
       const data = await response.json();
       setShareLink(`${window.location.origin}/share/${data.token}`);
+      setShareLinkId(data.linkId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
@@ -97,12 +103,44 @@ export function ShareModal() {
     }
   };
 
+  const handleRevoke = async () => {
+    if (!shareLinkId) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/share/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkId: shareLinkId }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to revoke link");
+      }
+
+      // Keep the modal open and show a clear confirmation state.
+      setShareLink("");
+      setShareLinkId(null);
+      setIsCopied(false);
+      setIsRevoked(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to revoke link";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleClose = () => {
     setShareModalOpen(false);
     setShareFileId(null);
     setShareFolderId(null);
     setShareLink("");
+    setShareLinkId(null);
     setIsCopied(false);
+    setIsRevoked(false);
     setError(null);
   };
 
@@ -219,8 +257,15 @@ export function ShareModal() {
                 </div>
               </div>
 
-              {/* Regenerate */}
-              <div className="flex justify-end pt-1">
+              {/* Actions: Revoke and Regenerate */}
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  onClick={handleRevoke}
+                  className="flex items-center gap-1.5 text-[11px] text-red-600 hover:text-red-700 transition-colors font-medium"
+                >
+                  <X className="h-3 w-3" />
+                  Revoke link
+                </button>
                 <button
                   onClick={() => generateShareLink(true)}
                   className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-gray-700 transition-colors"
@@ -232,6 +277,27 @@ export function ShareModal() {
             </>
 
           /* Error state */
+          ) : isRevoked ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-green-50">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-semibold text-gray-900">Link revoked</p>
+                <p className="text-xs text-muted-foreground max-w-[260px]">
+                  This shared link is no longer accessible.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateShareLink()}
+                className="gap-2"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Generate new link
+              </Button>
+            </div>
           ) : error ? (
             <div className="flex flex-col items-center gap-3 py-6">
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-red-50">

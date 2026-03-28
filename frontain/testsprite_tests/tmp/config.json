@@ -2,27 +2,19 @@
   "status": "commited",
   "type": "frontend",
   "scope": "codebase",
-  "localEndpoint": "http://localhost:3000/dashboard",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "sheikhshariarnehal@gmail.com",
+  "loginPassword": "iamnehal2001",
   "executionArgs": {
-    "projectName": "cloudvault-frontain",
-    "projectPath": "d:\\Poject\\cloudvault\\MAIN\\frontain",
-    "testIds": [
-      "TC001",
-      "TC004",
-      "TC005",
-      "TC006",
-      "TC007",
-      "TC008",
-      "TC009",
-      "TC010",
-      "TC011",
-      "TC012"
-    ],
-    "additionalInstruction": "Focus on mobile upload testing. Use mobile device emulation (iPhone viewport 390x844). Test the file upload flow on the dashboard page. Test upload button clicks, file picker triggering, and upload progress panel. The app uses guest mode by default so no login is needed.",
+    "projectName": "frontain",
+    "projectPath": "/home/nehal/Poject/Ndrive/frontain",
+    "testIds": [],
+    "additionalInstruction": "Start from login page first. Login with email sheikhshariarnehal@gmail.com and password iamnehal2001, then navigate explicitly to /drive and execute all planned frontend scenarios from there.",
+    "serverMode": "production",
     "envs": {
-      "API_KEY": "sk-user-WaZe_MEKw3P_T2prWJTBScVGclh2IcqOiVqrMvry7CFrlpXMMOBsaP5ObNIjP2Cp5Zq3OV12CgPwaB-NR6lrj4FLvK28DBzsYonOLzEaq5BVG0WYwMVpQ51EgOZc6SBR0gk"
+      "API_KEY": "sk-user-kfXGqxec2JtyxR6vlnO9xVxssMlA8fTQ88suqvIHs54tdyElgIAFPsHci0R_Wkz1ULNys1tZrlGBhXQZy67GwK28t4cy-cBlWrB_tNwgMTCwIKW-SaKGlYskas-8r0KgLh4"
     }
   },
-  "serverPort": 14386,
-  "proxy": "http://d4a2128b-944f-49e8-9a73-68b49ee11742:YQdeLtm7VshhizOrfernZOBz5NT2XGon@tun.testsprite.com:8080"
+  "serverPort": 37553,
+  "proxy": "http://8e4bdd5f-fb3e-4853-b745-db4a1f04690d:nPfrmgzgWFKiCagpZksx0prNYWDMpwQt@tun.testsprite.com:8080"
 }

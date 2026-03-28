@@ -1,6 +1,160 @@
 import { create } from "zustand";
 import type { DbFile, DbFolder, UploadQueueItem, ViewMode } from "@/types/file.types";
 
+// Subscribers for view mode changes - shared with use-view-mode.ts
+let viewModeListeners: Array<() => void> = [];
+
+export function subscribeToViewMode(listener: () => void): () => void {
+  viewModeListeners.push(listener);
+  return () => {
+    viewModeListeners = viewModeListeners.filter((l) => l !== listener);
+  };
+}
+
+export function notifyViewModeListeners(): void {
+  viewModeListeners.forEach((listener) => listener());
+}
+
+// Initialize viewMode from localStorage to prevent flash of wrong layout on hydration.
+// Falls back to "grid" (default) if nothing is stored or if running on server.
+function getInitialViewMode(): ViewMode {
+  if (typeof window === "undefined") return "grid";
+  try {
+    const saved = localStorage.getItem("viewMode");
+    if (saved === "grid" || saved === "list") return saved;
+  } catch {
+    // localStorage not available
+  }
+  return "grid";
+}
+
+// ============================================================================
+// Persistent cache for instant file loading
+// ============================================================================
+const FILES_CACHE_KEY = "ndrive_files_cache";
+const FOLDERS_CACHE_KEY = "ndrive_folders_cache";
+const CACHE_VERSION_KEY = "ndrive_cache_version";
+const CACHE_USER_KEY = "ndrive_cache_user";
+const CURRENT_CACHE_VERSION = 1;
+// Cache expires after 5 minutes - we show cached data instantly but refresh in background
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CacheData<T> {
+  data: T[];
+  timestamp: number;
+  version: number;
+}
+
+function getCachedData<T>(key: string, userId: string | null): T[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    // Check if cache belongs to current user
+    const cachedUser = localStorage.getItem(CACHE_USER_KEY);
+    if (cachedUser !== userId) {
+      // Clear stale cache from different user
+      localStorage.removeItem(FILES_CACHE_KEY);
+      localStorage.removeItem(FOLDERS_CACHE_KEY);
+      return null;
+    }
+
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed: CacheData<T> = JSON.parse(raw);
+    
+    // Validate cache version
+    if (parsed.version !== CURRENT_CACHE_VERSION) return null;
+    
+    // Check TTL - return data but mark as stale if expired
+    // We still return cached data for instant display, layout will refresh
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData<T>(key: string, data: T[], userId: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const cacheData: CacheData<T> = {
+      data,
+      timestamp: Date.now(),
+      version: CURRENT_CACHE_VERSION,
+    };
+    localStorage.setItem(key, JSON.stringify(cacheData));
+    localStorage.setItem(CACHE_USER_KEY, userId || "guest");
+  } catch {
+    // localStorage quota exceeded or not available - gracefully ignore
+  }
+}
+
+function isCacheStale(key: string): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return true;
+    const parsed = JSON.parse(raw) as CacheData<unknown>;
+    return Date.now() - parsed.timestamp > CACHE_TTL_MS;
+  } catch {
+    return true;
+  }
+}
+
+// Get cached files/folders for instant hydration
+function getInitialFiles(userId: string | null): DbFile[] {
+  return getCachedData<DbFile>(FILES_CACHE_KEY, userId) ?? [];
+}
+
+function getInitialFolders(userId: string | null): DbFolder[] {
+  return getCachedData<DbFolder>(FOLDERS_CACHE_KEY, userId) ?? [];
+}
+
+// Export for use in layout
+export function cacheFiles(files: DbFile[], userId: string | null): void {
+  setCachedData(FILES_CACHE_KEY, files, userId);
+}
+
+export function cacheFolders(folders: DbFolder[], userId: string | null): void {
+  setCachedData(FOLDERS_CACHE_KEY, folders, userId);
+}
+
+export function isCacheAvailable(userId: string | null): boolean {
+  if (typeof window === "undefined") return false;
+  const cachedUser = localStorage.getItem(CACHE_USER_KEY);
+  if (cachedUser !== (userId || "guest")) return false;
+  return getCachedData(FILES_CACHE_KEY, userId) !== null;
+}
+
+export function isFileCacheStale(): boolean {
+  return isCacheStale(FILES_CACHE_KEY);
+}
+
+export function clearFileCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(FILES_CACHE_KEY);
+    localStorage.removeItem(FOLDERS_CACHE_KEY);
+    localStorage.removeItem(CACHE_USER_KEY);
+  } catch {}
+}
+
+// Hydrate store from cache - call this once auth resolves to load cached data instantly
+export function hydrateFromCache(userId: string | null): { files: DbFile[]; folders: DbFolder[] } | null {
+  const cacheUserId = userId || "guest";
+  const cachedUser = typeof window !== "undefined" ? localStorage.getItem(CACHE_USER_KEY) : null;
+  
+  // Only hydrate if cache belongs to current user
+  if (cachedUser !== cacheUserId) return null;
+  
+  const files = getCachedData<DbFile>(FILES_CACHE_KEY, cacheUserId);
+  const folders = getCachedData<DbFolder>(FOLDERS_CACHE_KEY, cacheUserId);
+  
+  if (files && files.length > 0) {
+    return { files, folders: folders ?? [] };
+  }
+  return null;
+}
+
 interface FilesState {
   files: DbFile[];
   folders: DbFolder[];
@@ -23,6 +177,7 @@ interface FilesState {
 
   // Folder actions
   setFolders: (folders: DbFolder[]) => void;
+  mergeFolders: (folders: DbFolder[]) => void;
   addFolder: (folder: DbFolder) => void;
   updateFolder: (id: string, updates: Partial<DbFolder>) => void;
   removeFolder: (id: string) => void;
@@ -51,7 +206,7 @@ export const useFilesStore = create<FilesState>((set) => ({
   files: [],
   folders: [],
   uploadQueue: [],
-  viewMode: "list",
+  viewMode: getInitialViewMode(),
   selectedFiles: [],
   currentFolderId: null,
   isLoading: false,
@@ -92,6 +247,13 @@ export const useFilesStore = create<FilesState>((set) => ({
 
   // Folder actions
   setFolders: (folders) => set({ folders }),
+  mergeFolders: (incoming) =>
+    set((state) => {
+      const existingIds = new Set(state.folders.map((f) => f.id));
+      const newFolders = incoming.filter((f) => !existingIds.has(f.id));
+      if (newFolders.length === 0) return state;
+      return { folders: [...state.folders, ...newFolders] };
+    }),
   addFolder: (folder) =>
     set((state) => {
       // Check if folder already exists to prevent duplicates
@@ -153,13 +315,12 @@ export const useFilesStore = create<FilesState>((set) => ({
   setViewMode: (mode) => {
     try {
       localStorage.setItem("viewMode", mode);
-      if (mode === "grid") {
-        document.documentElement.setAttribute("data-view-mode", "grid");
-      } else {
-        document.documentElement.removeAttribute("data-view-mode");
-      }
+      // Always set the attribute (grid is default, list is explicit)
+      document.documentElement.setAttribute("data-view-mode", mode);
     } catch {}
     set({ viewMode: mode });
+    // Notify external subscribers (used by useSyncExternalStore in use-view-mode.ts)
+    notifyViewModeListeners();
   },
   setSelectedFiles: (ids) => set({ selectedFiles: ids }),
   toggleFileSelection: (id) =>

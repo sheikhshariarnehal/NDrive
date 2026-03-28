@@ -6,21 +6,22 @@ import { createClient } from "@/lib/supabase/client";
 import { useFilesStore } from "@/store/files-store";
 import { FileList } from "@/components/file-list/file-list";
 import { FileCard } from "@/components/file-grid/file-card";
+import { FolderGrid } from "@/components/file-grid/folder-grid";
 import { Clock } from "lucide-react";
 import { useEffectiveViewMode } from "@/lib/utils/use-view-mode";
 import { GridViewSkeleton } from "@/components/skeletons/grid-view-skeleton";
 import { ListViewSkeleton } from "@/components/skeletons/list-view-skeleton";
-import type { DbFile } from "@/types/file.types";
+import type { DbFile, DbFolder } from "@/types/file.types";
 import { ViewModeToggle } from "@/components/file-view/view-mode-toggle";
 
 export default function RecentPage() {
   const { user, guestSessionId } = useAuth();
-  const { files, dataLoaded, mergeFiles, viewMode, setViewMode } = useFilesStore();
+  const { files, folders, dataLoaded, mergeFiles, mergeFolders, viewMode, setViewMode } = useFilesStore();
   const effectiveViewMode = useEffectiveViewMode();
 
   useEffect(() => {
     // The layout preloads a capped set. On the Recent page, fetch remaining
-    // pages so older files are also available.
+    // pages so older files and folders are also available.
     if (!dataLoaded) return;
 
     const userId = user?.id;
@@ -34,6 +35,10 @@ export default function RecentPage() {
       "file_hash,tdlib_file_id,is_starred,is_trashed,trashed_at," +
       "created_at,updated_at,thumbnail_url";
 
+    const FOLDER_COLUMNS =
+      "id,user_id,guest_session_id,parent_id,name,color,is_trashed," +
+      "trashed_at,created_at,updated_at";
+
     const PAGE_SIZE = 1000;
     const supabase = createClient();
     let cancelled = false;
@@ -44,7 +49,9 @@ export default function RecentPage() {
 
       while (!cancelled) {
         const to = from + PAGE_SIZE - 1;
-        const { data, error } = await supabase
+
+        // Fetch files
+        const { data: filesData, error: filesError } = await supabase
           .from("files")
           .select(FILE_COLUMNS)
           .eq(filterColumn, filterValue)
@@ -52,19 +59,39 @@ export default function RecentPage() {
           .order("created_at", { ascending: false })
           .range(from, to);
 
-        if (error) {
-          console.error("Failed to load older recent files:", error);
+        if (filesError) {
+          console.error("Failed to load older recent files:", filesError);
+        } else {
+          const page = (filesData ?? []) as unknown as DbFile[];
+          if (page.length > 0) {
+            mergeFiles(page);
+          }
+        }
+
+        // Fetch folders
+        const { data: foldersData, error: foldersError } = await supabase
+          .from("folders")
+          .select(FOLDER_COLUMNS)
+          .eq(filterColumn, filterValue)
+          .eq("is_trashed", false)
+          .order("created_at", { ascending: false })
+          .range(from, to);
+
+        if (foldersError) {
+          console.error("Failed to load older recent folders:", foldersError);
+        } else {
+          const folderPage = (foldersData ?? []) as unknown as DbFolder[];
+          if (folderPage.length > 0) {
+            mergeFolders(folderPage);
+          }
+        }
+
+        const filesPage = (filesData ?? []) as unknown as DbFile[];
+        if (filesPage.length === 0 && ((foldersData ?? []) as unknown as DbFolder[]).length === 0) {
           return;
         }
 
-        const page = (data ?? []) as unknown as DbFile[];
-        if (page.length === 0) {
-          return;
-        }
-
-        mergeFiles(page);
-
-        if (page.length < PAGE_SIZE) {
+        if (filesPage.length < PAGE_SIZE && ((foldersData ?? []) as unknown as DbFolder[]).length < PAGE_SIZE) {
           return;
         }
 
@@ -79,7 +106,7 @@ export default function RecentPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [user?.id, guestSessionId, dataLoaded, mergeFiles]);
+  }, [user?.id, guestSessionId, dataLoaded, mergeFiles, mergeFolders]);
 
   const recentFiles = useMemo(
     () =>
@@ -87,6 +114,14 @@ export default function RecentPage() {
         (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       ),
     [files]
+  );
+
+  const recentFolders = useMemo(
+    () =>
+      [...folders].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      ),
+    [folders]
   );
 
   if (!dataLoaded) {
@@ -106,30 +141,39 @@ export default function RecentPage() {
     <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Recent Files</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#202124]">Recent</h1>
           <p className="text-xs sm:text-sm text-[#5f6368]">
-            Your most recently modified files
+            Your most recently modified files and folders
           </p>
         </div>
         <ViewModeToggle viewMode={viewMode} onChange={setViewMode} className="mt-0.5" />
       </div>
 
-      {recentFiles.length > 0 ? (
+      {recentFiles.length > 0 || recentFolders.length > 0 ? (
         effectiveViewMode === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-            {recentFiles.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+          <div className="space-y-6">
+            {recentFolders.length > 0 && (
+              <div>
+                <FolderGrid folders={recentFolders} />
+              </div>
+            )}
+            {recentFiles.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                {recentFiles.map((file) => (
+                  <FileCard key={file.id} file={file} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          <FileList files={recentFiles} />
+          <FileList files={recentFiles} folders={recentFolders} />
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">No recent files</h3>
+          <h3 className="text-lg font-semibold">No recent items</h3>
           <p className="text-muted-foreground text-sm">
-            Your recently accessed files will appear here
+            Your recently modified files and folders will appear here
           </p>
         </div>
       )}

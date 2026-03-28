@@ -167,7 +167,7 @@ export function Sidebar() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-fit h-14 px-6 rounded-2xl border border-transparent bg-white shadow-[0_1px_3px_rgb(0_0_0/0.1),0_1px_2px_rgb(0_0_0/0.06)] hover:bg-[#f8f9fa] hover:shadow-[0_1px_3px_rgb(0_0_0/0.15),0_1px_2px_rgb(0_0_0/0.1)] text-[#202124] font-medium text-sm gap-3 transition-all"
+                  className="w-fit h-14 px-6 rounded-2xl border border-transparent bg-white shadow-[0_1px_3px_rgb(0_0_0/0.1),0_1px_2px_rgb(0_0_0/0.06)] hover:bg-[#f8f9fa] hover:shadow-[0_1px_3px_rgb(0_0_0/0.15),0_1px_2px_rgb(0_0_0/0.1)] text-[#202124] font-medium text-sm gap-3 transition-[background-color,box-shadow]"
                 >
                   <Plus className="h-6 w-6 stroke-[2]" />
                   <span>New</span>
@@ -209,7 +209,7 @@ export function Sidebar() {
           {!authLoading && (isGuest || !user) && (
             <div className="px-4 pb-4">
               <Link href="/auth/signup">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all h-10 text-sm font-medium rounded-full">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-colors h-10 text-sm font-medium rounded-full">
                   <Crown className="h-4 w-4 mr-2" />
                   Sign Up for Full Access
                 </Button>

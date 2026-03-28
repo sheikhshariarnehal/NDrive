@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/app/providers/auth-provider";
 import { useRealtimeFiles } from "@/lib/realtime/use-realtime-files";
-import { useFilesStore } from "@/store/files-store";
+import { useFilesStore, cacheFiles, cacheFolders, hydrateFromCache, isFileCacheStale, clearFileCache } from "@/store/files-store";
 import { useUIStore } from "@/store/ui-store";
 import { createClient } from "@/lib/supabase/client";
 import { Sidebar } from "@/components/sidebar/sidebar";
@@ -69,12 +69,25 @@ export default function DashboardLayout({
   const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(
     () => typeof window !== "undefined" && sessionStorage.getItem("telegram-banner-dismissed") === "true"
   );
-  const { files, setFiles, mergeFiles, setFolders, setIsLoading, setDataLoaded, currentFolderId } = useFilesStore();
+  // Narrow selectors to avoid rerenders when unrelated state changes (e.g. mergeFiles)
+  const files = useFilesStore((s) => s.files);
+  const setFiles = useFilesStore((s) => s.setFiles);
+  const mergeFiles = useFilesStore((s) => s.mergeFiles);
+  const setFolders = useFilesStore((s) => s.setFolders);
+  const setIsLoading = useFilesStore((s) => s.setIsLoading);
+  const setDataLoaded = useFilesStore((s) => s.setDataLoaded);
+  const currentFolderId = useFilesStore((s) => s.currentFolderId);
+  
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const isOnline = useUIStore((s) => s.isOnline);
   const setIsOnline = useUIStore((s) => s.setIsOnline);
   const previewFileId = useUIStore((s) => s.previewFileId);
+  const newFolderModalOpen = useUIStore((s) => s.newFolderModalOpen);
+  const renameModalOpen = useUIStore((s) => s.renameModalOpen);
+  const shareModalOpen = useUIStore((s) => s.shareModalOpen);
+  const connectTelegramModalOpen = useUIStore((s) => s.connectTelegramModalOpen);
+  
   const previewFile = previewFileId ? files.find((file) => file.id === previewFileId) : null;
   const isMediaPreviewFile =
     previewFile ? ["image", "video"].includes(getFileCategory(previewFile.mime_type)) : false;
@@ -83,7 +96,11 @@ export default function DashboardLayout({
   // Set up realtime subscriptions
   useRealtimeFiles(user?.id ?? null, guestSessionId);
 
-  // Load initial data
+  // Track last loaded user to detect user switches
+  const lastLoadedUserRef = useRef<string | null>(null);
+  const hasHydratedRef = useRef(false);
+
+  // Load initial data with cache-first strategy for instant loading
   useEffect(() => {
     // Wait for auth to finish resolving before querying.
     // This prevents: (a) querying with wrong identity, (b) double-firing.
@@ -92,16 +109,49 @@ export default function DashboardLayout({
     let cancelled = false;
 
     const loadData = async () => {
-      setIsLoading(true);
       const supabase = createClient();
 
       const userId = user?.id;
       const filterColumn = userId ? "user_id" : "guest_session_id";
       const filterValue = userId || guestSessionId;
+      const cacheUserId = userId || guestSessionId;
 
       if (!filterValue) {
         setIsLoading(false);
         return;
+      }
+
+      // Detect user switch - clear stale cache and store state
+      if (lastLoadedUserRef.current !== null && lastLoadedUserRef.current !== cacheUserId) {
+        clearFileCache();
+        setFiles([]);
+        setFolders([]);
+        hasHydratedRef.current = false;
+      }
+      lastLoadedUserRef.current = cacheUserId;
+
+      // CACHE-FIRST: Try to hydrate from localStorage cache for instant display
+      if (!hasHydratedRef.current) {
+        const cached = hydrateFromCache(cacheUserId);
+        if (cached && cached.files.length > 0) {
+          // Instantly populate store with cached data - no loading spinner!
+          setFiles(cached.files);
+          setFolders(cached.folders);
+          setIsLoading(false);
+          setDataLoaded(true);
+          hasHydratedRef.current = true;
+
+          // If cache is fresh (< 5 min), just do background hydration
+          if (!isFileCacheStale()) {
+            void backgroundHydration(supabase, filterColumn, filterValue, cacheUserId, () => cancelled);
+            return;
+          }
+          // Cache is stale - continue to refresh in background (but UI is already showing)
+        } else {
+          // No cache - show loading state
+          setIsLoading(true);
+        }
+        hasHydratedRef.current = true;
       }
 
       try {
@@ -116,8 +166,7 @@ export default function DashboardLayout({
           "id,user_id,guest_session_id,parent_id,name,color," +
           "is_trashed,trashed_at,created_at,updated_at";
 
-        const INITIAL_FILES_PAGE_SIZE = 200;
-        const FILES_BACKGROUND_PAGE_SIZE = 1000;
+        const INITIAL_FILES_PAGE_SIZE = 120;
 
         const [filesRes, foldersRes] = await Promise.all([
           supabase
@@ -137,41 +186,18 @@ export default function DashboardLayout({
 
         if (cancelled) return;
 
-        if (filesRes.data) setFiles(filesRes.data as unknown as DbFile[]);
-        if (foldersRes.data) setFolders(foldersRes.data as unknown as DbFolder[]);
+        const newFiles = (filesRes.data ?? []) as unknown as DbFile[];
+        const newFolders = (foldersRes.data ?? []) as unknown as DbFolder[];
 
-        // Keep hydrating older pages in the background so sidebar storage metrics
-        // are computed from the full dataset across all drive routes.
-        const loadRemainingFiles = async () => {
-          let from = INITIAL_FILES_PAGE_SIZE;
+        setFiles(newFiles);
+        setFolders(newFolders);
 
-          while (!cancelled) {
-            const to = from + FILES_BACKGROUND_PAGE_SIZE - 1;
-            const { data, error } = await supabase
-              .from("files")
-              .select(FILE_COLUMNS)
-              .eq(filterColumn, filterValue)
-              .eq("is_trashed", false)
-              .order("created_at", { ascending: false })
-              .range(from, to);
+        // Cache the fresh data for next app open
+        cacheFiles(newFiles, cacheUserId);
+        cacheFolders(newFolders, cacheUserId);
 
-            if (error) {
-              console.error("Failed to load remaining files:", error);
-              return;
-            }
-
-            const page = (data ?? []) as unknown as DbFile[];
-            if (page.length === 0) return;
-
-            mergeFiles(page);
-
-            if (page.length < FILES_BACKGROUND_PAGE_SIZE) return;
-
-            from += FILES_BACKGROUND_PAGE_SIZE;
-          }
-        };
-
-        void loadRemainingFiles();
+        // Background hydration for remaining files
+        void backgroundHydration(supabase, filterColumn, filterValue, cacheUserId, () => cancelled);
       } catch (error) {
         console.error("Failed to load data:", error);
       } finally {
@@ -179,6 +205,76 @@ export default function DashboardLayout({
           setIsLoading(false);
           setDataLoaded(true);
         }
+      }
+    };
+
+    // Background hydration helper - loads remaining files in idle time
+    const backgroundHydration = async (
+      supabase: ReturnType<typeof createClient>,
+      filterColumn: string,
+      filterValue: string,
+      cacheUserId: string | null,
+      isCancelled: () => boolean
+    ) => {
+      const FILE_COLUMNS =
+        "id,user_id,guest_session_id,folder_id,name,original_name," +
+        "mime_type,size_bytes,telegram_file_id,telegram_message_id," +
+        "file_hash,tdlib_file_id,is_starred,is_trashed,trashed_at," +
+        "created_at,updated_at,thumbnail_url";
+      const INITIAL_FILES_PAGE_SIZE = 120;
+      const FILES_BACKGROUND_PAGE_SIZE = 1000;
+
+      let from = INITIAL_FILES_PAGE_SIZE;
+
+      // Helper to schedule next page during idle time
+      const scheduleNextPage = (): Promise<void> => {
+        return new Promise((resolve) => {
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(() => resolve(), { timeout: 2000 });
+          } else {
+            // Fallback for Safari: use setTimeout with small delay
+            setTimeout(resolve, 100);
+          }
+        });
+      };
+
+      while (!isCancelled()) {
+        // Wait for idle before fetching next page
+        await scheduleNextPage();
+        if (isCancelled()) return;
+
+        const to = from + FILES_BACKGROUND_PAGE_SIZE - 1;
+        const { data, error } = await supabase
+          .from("files")
+          .select(FILE_COLUMNS)
+          .eq(filterColumn, filterValue)
+          .eq("is_trashed", false)
+          .order("created_at", { ascending: false })
+          .range(from, to);
+
+        if (error) {
+          console.error("Failed to load remaining files:", error);
+          return;
+        }
+
+        const page = (data ?? []) as unknown as DbFile[];
+        if (page.length === 0) {
+          // All files loaded - update cache with complete dataset
+          const allFiles = useFilesStore.getState().files;
+          cacheFiles(allFiles, cacheUserId);
+          return;
+        }
+
+        mergeFiles(page);
+
+        if (page.length < FILES_BACKGROUND_PAGE_SIZE) {
+          // Last page - update cache
+          const allFiles = useFilesStore.getState().files;
+          cacheFiles(allFiles, cacheUserId);
+          return;
+        }
+
+        from += FILES_BACKGROUND_PAGE_SIZE;
       }
     };
 
@@ -245,36 +341,41 @@ export default function DashboardLayout({
           )}
 
           {/* Telegram Connect Banner */}
-          {user && !isGuest && !isTelegramStatusLoading && !isTelegramConnected && !telegramBannerDismissed && (
-            <div className="px-3 pt-3 sm:px-4">
-              <div className="relative flex flex-col gap-3 rounded-2xl border border-[#1a73e8] bg-[#d3e3fd] px-4 py-3 shadow-[0_1px_2px_rgba(26,115,232,0.08)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3.5">
-                <div className="flex min-w-0 items-start gap-3 sm:items-center">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center">
-                    <Telegram className="h-6 w-6" />
+          {user && !isGuest && (
+            <div className="px-3 pt-3 sm:px-4" aria-hidden={isTelegramStatusLoading ? true : undefined}>
+              {isTelegramStatusLoading ? (
+                // Reserve banner space during async status check to avoid layout shift.
+                <div className="h-[112px] sm:h-[74px] rounded-2xl border border-[#d3e3fd] bg-[#eef3fd]" />
+              ) : !isTelegramConnected && !telegramBannerDismissed ? (
+                <div className="relative flex flex-col gap-3 rounded-2xl border border-[#1a73e8] bg-[#d3e3fd] px-4 py-3 shadow-[0_1px_2px_rgba(26,115,232,0.08)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3.5">
+                  <div className="flex min-w-0 items-start gap-3 sm:items-center">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center">
+                      <Telegram className="h-6 w-6" />
+                    </div>
+                    <p className="min-w-0 pr-8 text-sm leading-6 text-[#202124] sm:pr-0 sm:text-[15px]">
+                      Connect your Telegram for <span className="font-semibold">unlimited personal storage</span>
+                    </p>
                   </div>
-                  <p className="min-w-0 pr-8 text-sm leading-6 text-[#202124] sm:pr-0 sm:text-[15px]">
-                    Connect your Telegram for <span className="font-semibold">unlimited personal storage</span>
-                  </p>
+                  <div className="flex w-full items-center gap-2.5 pr-10 sm:w-auto sm:flex-shrink-0 sm:justify-end sm:pr-0">
+                    <button
+                      onClick={() => useUIStore.getState().setConnectTelegramModalOpen(true)}
+                      className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] shadow-none transition-all hover:bg-[#f8f9fa] hover:border-[#dadce0] sm:w-auto"
+                    >
+                      Connect
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTelegramBannerDismissed(true);
+                        sessionStorage.setItem("telegram-banner-dismissed", "true");
+                      }}
+                      className="absolute right-2 top-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-white/50 hover:text-[#202124] sm:static"
+                      aria-label="Dismiss"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex w-full items-center gap-2.5 pr-10 sm:w-auto sm:flex-shrink-0 sm:justify-end sm:pr-0">
-                  <button
-                    onClick={() => useUIStore.getState().setConnectTelegramModalOpen(true)}
-                    className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] shadow-none transition-all hover:bg-[#f8f9fa] hover:border-[#dadce0] sm:w-auto"
-                  >
-                    Connect
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTelegramBannerDismissed(true);
-                      sessionStorage.setItem("telegram-banner-dismissed", "true");
-                    }}
-                    className="absolute right-2 top-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-white/50 hover:text-[#202124] sm:static"
-                    aria-label="Dismiss"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+              ) : null}
             </div>
           )}
 
@@ -297,13 +398,13 @@ export default function DashboardLayout({
         {/* Mobile FAB */}
         <MobileUploadFab />
 
-        {/* Modals */}
+        {/* Modals — only mount when open to defer chunk loading */}
         <UploadProgress />
         {previewFileId ? (isMediaPreviewFile ? <MediaPreviewModal /> : <PreviewModal />) : null}
-        <NewFolderModal />
-        <RenameModal />
-        <ShareModal />
-        <ConnectTelegramModal />
+        {newFolderModalOpen && <NewFolderModal />}
+        {renameModalOpen && <RenameModal />}
+        {shareModalOpen && <ShareModal />}
+        {connectTelegramModalOpen && <ConnectTelegramModal />}
 
         {/* Global download progress speedometer */}
         <DownloadSpeedometer

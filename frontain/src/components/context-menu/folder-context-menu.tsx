@@ -56,8 +56,8 @@ export function FolderContextMenu({ folder }: FolderContextMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="p-1 rounded-md hover:bg-muted">
-          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+        <button className="p-1 rounded-md hover:bg-muted" aria-label={`More actions for folder ${folder.name}`}>
+          <MoreVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">

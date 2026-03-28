@@ -78,18 +78,25 @@ export async function POST(request: NextRequest) {
         .select("*")
         .eq("file_id", fileId)
         .eq("created_by", createdBy)
-        .eq("is_active", true)
         .single();
 
       if (existingLink) {
         if (!regenerate) {
-          return NextResponse.json({ token: existingLink.token });
+          // CRITICAL FIX: Only return existing link if still active
+          if (existingLink.is_active) {
+            return NextResponse.json({
+              token: existingLink.token,
+              linkId: existingLink.id
+            });
+          }
+          // If inactive, fall through to create new link
+        } else {
+          // Deactivate old link before creating a new one
+          await supabase
+            .from("shared_links")
+            .update({ is_active: false })
+            .eq("id", existingLink.id);
         }
-        // Deactivate old link before creating a new one
-        await supabase
-          .from("shared_links")
-          .update({ is_active: false })
-          .eq("id", existingLink.id);
       }
 
       // Generate a unique token
@@ -115,7 +122,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ token: shareLink.token });
+      return NextResponse.json({
+        token: shareLink.token,
+        linkId: shareLink.id
+      });
     }
 
     // Folder sharing
@@ -141,18 +151,25 @@ export async function POST(request: NextRequest) {
         .select("*")
         .eq("folder_id", folderId)
         .eq("created_by", createdBy)
-        .eq("is_active", true)
         .single();
 
       if (existingLink) {
         if (!regenerate) {
-          return NextResponse.json({ token: existingLink.token });
+          // CRITICAL FIX: Only return existing link if still active
+          if (existingLink.is_active) {
+            return NextResponse.json({
+              token: existingLink.token,
+              linkId: existingLink.id
+            });
+          }
+          // If inactive, fall through to create new link
+        } else {
+          // Deactivate old link before creating a new one
+          await supabase
+            .from("shared_links")
+            .update({ is_active: false })
+            .eq("id", existingLink.id);
         }
-        // Deactivate old link before creating a new one
-        await supabase
-          .from("shared_links")
-          .update({ is_active: false })
-          .eq("id", existingLink.id);
       }
 
       // Generate a unique token
@@ -178,7 +195,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ token: shareLink.token });
+      return NextResponse.json({
+        token: shareLink.token,
+        linkId: shareLink.id
+      });
     }
 
     return NextResponse.json(

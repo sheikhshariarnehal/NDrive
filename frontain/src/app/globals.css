@@ -126,3 +126,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── Performance Optimizations ────────────────────────────────────────
+ * content-visibility: auto defers rendering of off-screen list items.
+ * contain-intrinsic-size hints browser to reserve space (~48px row height).
+ * 
+ * NOTE: Do NOT apply content-visibility to virtualized rows - they use
+ * absolute positioning which handles off-screen optimization already.
+ * Only folder rows (non-virtualized) benefit from content-visibility.
+ */
+.folder-list-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 48px;
+}
+
+/* CSS containment for layout performance — reduces reflow scope */
+.file-list-container {
+  contain: style;
+}

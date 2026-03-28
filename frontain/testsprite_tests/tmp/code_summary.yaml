@@ -27,32 +27,32 @@ routes:
     file: src/app/auth/migrate/page.tsx
     auth_required: false
     description: Guest-to-user migration page
-  - path: /dashboard
-    file: src/app/dashboard/page.tsx
+  - path: /drive
+    file: src/app/drive/page.tsx
     auth_required: false
     description: Main dashboard showing files, folders, upload buttons. Works for both authenticated users and guests.
-  - path: /dashboard/folder/[id]
-    file: src/app/dashboard/folder/[id]/page.tsx
+  - path: /drive/folder/[id]
+    file: src/app/drive/folder/[id]/page.tsx
     auth_required: false
     description: Folder contents view with breadcrumbs
-  - path: /dashboard/recent
-    file: src/app/dashboard/recent/page.tsx
+  - path: /drive/recent
+    file: src/app/drive/recent/page.tsx
     auth_required: false
     description: Recently accessed files
-  - path: /dashboard/starred
-    file: src/app/dashboard/starred/page.tsx
+  - path: /drive/starred
+    file: src/app/drive/starred/page.tsx
     auth_required: false
     description: Starred/favorited files
-  - path: /dashboard/shared
-    file: src/app/dashboard/shared/page.tsx
+  - path: /drive/shared
+    file: src/app/drive/shared/page.tsx
     auth_required: false
     description: Shared files listing
-  - path: /dashboard/trash
-    file: src/app/dashboard/trash/page.tsx
+  - path: /drive/trash
+    file: src/app/drive/trash/page.tsx
     auth_required: false
     description: Trashed files with restore/permanent delete
-  - path: /dashboard/settings
-    file: src/app/dashboard/settings/page.tsx
+  - path: /drive/settings
+    file: src/app/drive/settings/page.tsx
     auth_required: false
     description: User settings page
   - path: /share/[token]
@@ -77,10 +77,10 @@ features:
       - src/store/ui-store.ts
       - src/store/files-store.ts
       - src/types/file.types.ts
-      - src/app/dashboard/page.tsx
-      - src/app/dashboard/layout.tsx
+      - src/app/drive/page.tsx
+      - src/app/drive/layout.tsx
       - src/components/sidebar/sidebar.tsx
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Tap the Upload button in the dashboard header
       - Tap Create dropdown then Upload File menu item
@@ -98,7 +98,7 @@ features:
     files:
       - src/components/sidebar/sidebar.tsx
       - src/components/upload/upload-zone.tsx
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Tap + New in sidebar then Folder upload
       - Select folder from file picker (if supported)
@@ -112,7 +112,7 @@ features:
       - src/components/context-menu/file-context-menu.tsx
       - src/store/files-store.ts
       - src/app/api/files/route.ts
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Right-click or long-press on a file to open context menu
       - Click rename option and enter new name
@@ -130,8 +130,8 @@ features:
     files:
       - src/components/modals/new-folder-modal.tsx
       - src/app/api/folders/route.ts
-      - src/app/dashboard/folder/[id]/page.tsx
-    entry_route: /dashboard
+      - src/app/drive/folder/[id]/page.tsx
+    entry_route: /drive
     user_interactions:
       - Click Create dropdown then New Folder
       - Enter folder name in modal dialog
@@ -148,7 +148,7 @@ features:
     files:
       - src/components/preview/preview-modal.tsx
       - src/app/preview/[id]/page.tsx
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Click on a file card to open preview modal
       - View image, video, audio, or PDF inline
@@ -164,7 +164,7 @@ features:
       - src/components/modals/share-modal.tsx
       - src/app/api/share/route.ts
       - src/app/share/[token]/page.tsx
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Open context menu on a file
       - Click Share option
@@ -199,7 +199,7 @@ features:
     files:
       - src/components/top-bar/top-bar.tsx
       - src/store/files-store.ts
-    entry_route: /dashboard
+    entry_route: /drive
     user_interactions:
       - Click search input in top bar
       - Type search query
@@ -220,7 +220,7 @@ known_limitations:
     location: src/components/upload/upload-zone.tsx
     impact: Users cannot directly take photos to upload, must use file picker
   - issue: Empty state text references drag and drop which is desktop-only
-    location: src/app/dashboard/page.tsx
+    location: src/app/drive/page.tsx
     impact: Confusing UX on mobile where drag-and-drop is not available
   - issue: No chunked upload for large files on mobile
     location: src/components/upload/upload-zone.tsx
