@@ -102,14 +102,32 @@ export default function DashboardLayout({
 
   // Load initial data with cache-first strategy for instant loading
   useEffect(() => {
-    // Wait for auth to finish resolving before querying.
-    // This prevents: (a) querying with wrong identity, (b) double-firing.
-    if (authLoading) return;
-
     let cancelled = false;
 
     const loadData = async () => {
       const supabase = createClient();
+
+      // OPTIMIZATION: Try to load from cache immediately, even before auth resolves
+      // This shows UI instantly while auth is still loading
+      if (!hasHydratedRef.current) {
+        // Try guest cache first (most common case for first load)
+        const guestCache = guestSessionId ? hydrateFromCache(guestSessionId) : null;
+        const userCache = user?.id ? hydrateFromCache(user.id) : null;
+        const cached = userCache || guestCache;
+        
+        if (cached && cached.files.length > 0) {
+          // Instantly populate store with cached data - no loading spinner!
+          setFiles(cached.files);
+          setFolders(cached.folders);
+          setIsLoading(false);
+          setDataLoaded(true);
+          hasHydratedRef.current = true;
+        }
+      }
+
+      // Wait for auth to finish resolving before querying fresh data.
+      // This prevents: (a) querying with wrong identity, (b) double-firing.
+      if (authLoading) return;
 
       const userId = user?.id;
       const filterColumn = userId ? "user_id" : "guest_session_id";

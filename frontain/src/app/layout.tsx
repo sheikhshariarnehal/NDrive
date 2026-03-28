@@ -36,6 +36,15 @@ export default function RootLayout({
         {/* Resource hints for external origins used during startup */}
         <link rel="preconnect" href="https://ui-avatars.com" />
         <link rel="dns-prefetch" href="https://ui-avatars.com" />
+        {/* R2 CDN for thumbnails - preconnect for faster image loads */}
+        <link rel="preconnect" href="https://pub-99b846451dcc4c879db177b7e8b60c2f.r2.dev" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://pub-99b846451dcc4c879db177b7e8b60c2f.r2.dev" />
+        {/* Supabase for data fetching */}
+        <link rel="preconnect" href="https://zcigqsiovqqldlsnwiqd.supabase.co" />
+        <link rel="dns-prefetch" href="https://zcigqsiovqqldlsnwiqd.supabase.co" />
+        {/* Google user avatars */}
+        <link rel="preconnect" href="https://lh3.googleusercontent.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

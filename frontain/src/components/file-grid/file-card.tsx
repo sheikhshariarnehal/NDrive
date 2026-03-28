@@ -84,6 +84,7 @@ export function FileCard({ file, priority = false }: FileCardProps) {
 
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(priority); // Only render image when visible
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
@@ -91,6 +92,27 @@ export function FileCard({ file, priority = false }: FileCardProps) {
 
   const onImgLoad = useCallback(() => setImgLoaded(true), []);
   const onImgError = useCallback(() => setImgError(true), []);
+
+  // Lazy visibility detection - only load image when card enters viewport
+  useEffect(() => {
+    if (priority || isVisible) return; // Already visible or priority
+    
+    const card = cardRef.current;
+    if (!card) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px 0px" } // Start loading 100px before visible
+    );
+
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [priority, isVisible]);
 
   return (
     <div
@@ -116,15 +138,20 @@ export function FileCard({ file, priority = false }: FileCardProps) {
         className="relative w-full flex-1 border-t border-[#e0e0e0] overflow-hidden"
         onClick={() => setPreviewFileId(file.id)}
       >
+        {/* Skeleton placeholder - prevents CLS by reserving space */}
+        {hasThumbnail && !imgLoaded && (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#f1f3f4] to-[#e8eaed] animate-pulse" />
+        )}
+
         {/* Placeholder background — always rendered, visible until image loads */}
-        <div className={`absolute inset-0 flex items-center justify-center ${config.bgClass}`}>
+        <div className={`absolute inset-0 flex items-center justify-center ${config.bgClass} ${imgLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
           {category !== "video" && (
             <Icon className="h-8 w-8 sm:h-12 sm:w-12 opacity-20" style={{ color: config.color }} />
           )}
         </div>
 
-        {/* Thumbnail image — fades in over the placeholder */}
-        {hasThumbnail && thumbnailSrc && (
+        {/* Thumbnail image — only render when visible (lazy) or priority */}
+        {hasThumbnail && thumbnailSrc && isVisible && (
           <img
             src={thumbnailSrc}
             alt=""

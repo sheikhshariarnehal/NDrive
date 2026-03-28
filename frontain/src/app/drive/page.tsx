@@ -27,10 +27,13 @@ import { ListViewSkeleton } from "@/components/skeletons/list-view-skeleton";
 import { ViewModeToggle } from "@/components/file-view/view-mode-toggle";
 
 export default function DashboardPage() {
-  const GRID_BATCH_SIZE = 60;
+  // Performance optimization: Start with fewer items for faster First Paint
+  // Then load more as user scrolls (Intersection Observer)
+  const INITIAL_BATCH_SIZE = 12; // Above-the-fold items (2 rows on most screens)
+  const GRID_BATCH_SIZE = 24;    // Smaller increments for smoother loading
   const { user, guestSessionId } = useAuth();
-  const [recentVisibleCount, setRecentVisibleCount] = useState(GRID_BATCH_SIZE);
-  const [starredVisibleCount, setStarredVisibleCount] = useState(GRID_BATCH_SIZE);
+  const [recentVisibleCount, setRecentVisibleCount] = useState(INITIAL_BATCH_SIZE);
+  const [starredVisibleCount, setStarredVisibleCount] = useState(INITIAL_BATCH_SIZE);
   const recentLoadMoreRef = useRef<HTMLDivElement>(null);
   const starredLoadMoreRef = useRef<HTMLDivElement>(null);
   
@@ -84,8 +87,8 @@ export default function DashboardPage() {
     .slice(0, 10), [files]);
 
   useEffect(() => {
-    setRecentVisibleCount(GRID_BATCH_SIZE);
-    setStarredVisibleCount(GRID_BATCH_SIZE);
+    setRecentVisibleCount(INITIAL_BATCH_SIZE);
+    setStarredVisibleCount(INITIAL_BATCH_SIZE);
   }, [searchQuery, effectiveViewMode]);
 
   useEffect(() => {
@@ -222,7 +225,7 @@ export default function DashboardPage() {
                 <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                   {visibleRecentFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 4} />
+                    <FileCard key={file.id} file={file} priority={index < 2} />
                   ))}
                 </div>
                 {canLoadMoreRecent && (
@@ -262,7 +265,7 @@ export default function DashboardPage() {
                 <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                   {visibleStarredFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 4} />
+                    <FileCard key={file.id} file={file} priority={index < 2} />
                   ))}
                 </div>
                 {canLoadMoreStarred && (
