@@ -17,6 +17,7 @@ import { getGuestSessionId } from "@/lib/guest-session";
 // ============================================================================
 const TELEGRAM_STATUS_CACHE_KEY = "ndrive_telegram_status";
 const TELEGRAM_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const TELEGRAM_STATUS_FETCH_TIMEOUT_MS = 8000;
 
 interface TelegramStatusCache {
   connected: boolean;
@@ -136,7 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [telegramPhone, setTelegramPhone] = useState<string | null>(null);
   const supabase = createClient();
   const statusReqRef = useRef<Promise<void> | null>(null);
-  const hasFetchedStatusRef = useRef(false);
 
   const fetchTelegramStatus = async (userId: string, skipLoadingState = false) => {
     if (statusReqRef.current) return statusReqRef.current;
@@ -148,7 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     statusReqRef.current = (async () => {
       try {
-        const res = await fetch("/api/telegram/status");
+        const res = await fetch("/api/telegram/status", {
+          signal: AbortSignal.timeout(TELEGRAM_STATUS_FETCH_TIMEOUT_MS),
+        });
         if (res.ok) {
           const data = await res.json();
           const connected = !!data.connected;
@@ -163,9 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCachedTelegramStatus(userId, false, null);
         }
       } catch {
-        // Non-fatal — status check failure doesn't block auth
-        setIsTelegramConnected(false);
-        setTelegramPhone(null);
+        // Non-fatal — keep existing state to avoid false disconnected UI on transient failures.
       } finally {
         setIsTelegramStatusLoading(false);
         statusReqRef.current = null;

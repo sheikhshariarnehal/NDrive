@@ -360,11 +360,8 @@ export default function DashboardLayout({
 
           {/* Telegram Connect Banner */}
           {user && !isGuest && (
-            <div className="px-3 pt-3 sm:px-4" aria-hidden={isTelegramStatusLoading ? true : undefined}>
-              {isTelegramStatusLoading ? (
-                // Reserve banner space during async status check to avoid layout shift.
-                <div className="h-[112px] sm:h-[74px] rounded-2xl border border-[#d3e3fd] bg-[#eef3fd]" />
-              ) : !isTelegramConnected && !telegramBannerDismissed ? (
+            <div className="px-3 pt-3 sm:px-4">
+              {!isTelegramStatusLoading && !isTelegramConnected && !telegramBannerDismissed ? (
                 <div className="relative flex flex-col gap-3 rounded-2xl border border-[#1a73e8] bg-[#d3e3fd] px-4 py-3 shadow-[0_1px_2px_rgba(26,115,232,0.08)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3.5">
                   <div className="flex min-w-0 items-start gap-3 sm:items-center">
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center">
