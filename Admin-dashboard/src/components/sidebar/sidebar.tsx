@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import NextImage from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/app/providers/auth-provider";
@@ -29,9 +29,6 @@ import {
   Settings,
   Crown,
   Plus,
-  FolderPlus,
-  Upload,
-  FolderUp,
   ImageIcon,
 } from "lucide-react";
 
@@ -78,16 +75,12 @@ function SidebarLoadingSkeleton() {
 }
 
 export function Sidebar() {
-  const [secondaryReady, setSecondaryReady] = useState(false);
   const pathname = usePathname();
   const { user, isGuest, isLoading: authLoading } = useAuth();
   // Use granular selectors so Sidebar only re-renders when these specific values change.
   const folders = useFilesStore((s) => s.folders);
   const filesLoading = useFilesStore((s) => s.isLoading);
   const dataLoaded = useFilesStore((s) => s.dataLoaded);
-  const openFilePicker = useUIStore((s) => s.openFilePicker);
-  const openFolderPicker = useUIStore((s) => s.openFolderPicker);
-  const setNewFolderModalOpen = useUIStore((s) => s.setNewFolderModalOpen);
   const uploadFiles = useUIStore((s) => s.uploadFiles);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const showLoadingSkeleton = authLoading || filesLoading || !dataLoaded;
@@ -113,11 +106,6 @@ export function Sidebar() {
     if (files.length > 0) uploadFiles?.(files);
     e.target.value = "";
   }, [uploadFiles]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSecondaryReady(true), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   return (
     <div className="flex flex-col h-full w-full bg-transparent">
@@ -234,7 +222,7 @@ export function Sidebar() {
 
           {/* Storage Meter */}
           <div className="px-4 pb-3">
-            {secondaryReady ? <StorageMeter /> : null}
+            <StorageMeter />
           </div>
 
           {/* Upgrade / Sign Up Button */}

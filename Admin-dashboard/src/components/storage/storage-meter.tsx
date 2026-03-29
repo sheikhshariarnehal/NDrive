@@ -22,7 +22,7 @@ const DEFAULT_STORAGE_LIMIT =
   Number(process.env.NEXT_PUBLIC_MAX_GUEST_STORAGE_BYTES) || 107374182400;
 
 export function StorageMeter() {
-  const { files } = useFilesStore();
+  const files = useFilesStore((state) => state.files);
   const [isOpen, setIsOpen] = useState(false);
 
   const breakdown = useMemo(() => {
@@ -44,11 +44,9 @@ export function StorageMeter() {
   const usedPercent = Math.min((breakdown.total / storageLimit) * 100, 100);
 
   // Build segmented bar with cumulative offsets
-  let accumulated = 0;
-  const segments = STORAGE_SEGMENTS.map((seg) => {
+  const segments = STORAGE_SEGMENTS.map((seg, i, arr) => {
     const pct = Math.min((breakdown[seg.key] / storageLimit) * 100, 100);
-    const offset = accumulated;
-    accumulated += pct;
+    const offset = arr.slice(0, i).reduce((sum, s) => sum + Math.min((breakdown[s.key] / storageLimit) * 100, 100), 0);
     return { ...seg, size: breakdown[seg.key], pct, offset };
   });
 
@@ -65,14 +63,14 @@ export function StorageMeter() {
         {/* Header */}
         <div className='flex items-center justify-between mb-2.5'>
           <div className='flex items-center gap-1.5'>
-            <HardDrive className='w-3.5 h-3.5 text-gray-400' strokeWidth={2} />
-            <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-widest'>
+            <HardDrive className='w-3.5 h-3.5 text-gray-500' strokeWidth={2} />
+            <span className='text-[11px] font-semibold text-gray-600 uppercase tracking-widest'>
               Storage
             </span>
           </div>
-          <span className='text-[11px] font-medium tabular-nums text-gray-400'>
+          <span className='text-[11px] font-medium tabular-nums text-gray-600'>
             {formatFileSize(breakdown.total)}
-            <span className='text-gray-300 mx-0.5'>/</span>
+            <span className='text-gray-400 mx-0.5'>/</span>
             {formatFileSize(storageLimit)}
           </span>
         </div>
@@ -102,7 +100,7 @@ export function StorageMeter() {
                     className='inline-block w-1.5 h-1.5 rounded-full flex-shrink-0'
                     style={{ backgroundColor: seg.color }}
                   />
-                  <span className='text-[10px] font-medium text-gray-400'>{seg.label}</span>
+                  <span className='text-[10px] font-medium text-gray-500'>{seg.label}</span>
                 </div>
               ))}
           </div>

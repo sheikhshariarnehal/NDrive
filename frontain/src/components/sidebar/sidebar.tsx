@@ -3,7 +3,7 @@ import { NewDropdownMenu } from "@/components/context-menu/global-context-menu";
 
 import Link from "next/link";
 import NextImage from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/app/providers/auth-provider";
@@ -30,18 +30,9 @@ import {
   Users,
   Trash2,
   Settings,
-  Crown,
   Plus,
-  FolderPlus,
-  Upload,
-  FolderUp,
+  Crown,
   ImageIcon,
-  FileText,
-  Table,
-  Presentation,
-  PlaySquare,
-  ListTodo,
-  ChevronRight
 } from "lucide-react";
 
 const navItems: Array<{ href: string; label: string; icon: LucideIcon; badge?: string }> = [
@@ -79,14 +70,10 @@ function SidebarLoadingSkeleton() {
 }
 
 export function Sidebar() {
-  const [secondaryReady, setSecondaryReady] = useState(false);
   const pathname = usePathname();
   const { user, isGuest, isLoading: authLoading } = useAuth();
   const filesLoading = useFilesStore((s) => s.isLoading);
   const dataLoaded = useFilesStore((s) => s.dataLoaded);
-  const openFilePicker = useUIStore((s) => s.openFilePicker);
-  const openFolderPicker = useUIStore((s) => s.openFolderPicker);
-  const setNewFolderModalOpen = useUIStore((s) => s.setNewFolderModalOpen);
   const uploadFiles = useUIStore((s) => s.uploadFiles);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const showLoadingSkeleton = authLoading || filesLoading || !dataLoaded;
@@ -96,11 +83,6 @@ export function Sidebar() {
     if (files.length > 0) uploadFiles?.(files);
     e.target.value = "";
   }, [uploadFiles]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSecondaryReady(true), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   return (
     <div className="flex flex-col h-full w-full bg-transparent">
@@ -130,7 +112,7 @@ export function Sidebar() {
             <input
               ref={folderInputRef}
               type="file"
-              // @ts-ignore
+              // @ts-expect-error - webkitdirectory is a non-standard attribute but widely supported
               webkitdirectory=""
               multiple
               className="hidden"
@@ -166,7 +148,7 @@ export function Sidebar() {
 
           {/* Storage Meter */}
           <div className="px-4 pb-3">
-            {secondaryReady ? <StorageMeter /> : null}
+            <StorageMeter />
           </div>
 
           {/* Upgrade / Sign Up Button */}
