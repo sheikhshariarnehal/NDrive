@@ -144,7 +144,7 @@ export default function DashboardPage() {
         <div className="space-y-4 sm:space-y-6 pt-3 sm:pt-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 animate-pulse">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={`folder-${i}`} className="h-14 rounded-xl border border-[#dadce0] bg-[#f1f3f4]" />
+              <div key={`folder-${i}`} className="h-[42px] sm:h-[42px] rounded-xl border border-[#dadce0] bg-[#f1f3f4]" />
             ))}
           </div>
           <div className="hidden sm:block space-y-2 animate-pulse">
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                   {visibleRecentFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 2} />
+                    <FileCard key={file.id} file={file} priority={index < 12} />
                   ))}
                 </div>
                 {canLoadMoreRecent && (
@@ -265,7 +265,7 @@ export default function DashboardPage() {
                 <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                   {visibleStarredFiles.map((file, index) => (
-                    <FileCard key={file.id} file={file} priority={index < 2} />
+                    <FileCard key={file.id} file={file} priority={index < 12} />
                   ))}
                 </div>
                 {canLoadMoreStarred && (

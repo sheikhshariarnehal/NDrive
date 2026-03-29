@@ -17,9 +17,15 @@ export default function StarredPage() {
   if (!dataLoaded) {
     return (
       <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
-        <div>
-          <div className="h-6 w-32 bg-[#f1f3f4] rounded animate-pulse" />
-          <div className="h-3 w-56 bg-[#f1f3f4] rounded animate-pulse mt-2" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="h-7 sm:h-8 w-40 bg-[#f1f3f4] rounded animate-pulse" />
+            <div className="h-4 sm:h-5 w-64 bg-[#f1f3f4] rounded animate-pulse mt-1" />
+          </div>
+          <div className="mt-0.5 flex items-center gap-0 p-[1px] rounded-full bg-[#f1f3f4] animate-pulse">
+            <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+            <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+          </div>
         </div>
         <div className="skeleton-grid"><GridViewSkeleton folderCount={0} fileCount={6} /></div>
         <div className="skeleton-list"><ListViewSkeleton rowCount={6} /></div>
@@ -42,8 +48,8 @@ export default function StarredPage() {
       {starredFiles.length > 0 ? (
         effectiveViewMode === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-            {starredFiles.map((file) => (
-              <FileCard key={file.id} file={file} />
+            {starredFiles.map((file, index) => (
+              <FileCard key={file.id} file={file} priority={index < 12} />
             ))}
           </div>
         ) : (

@@ -107,7 +107,7 @@ export function FileCard({ file, priority = false }: FileCardProps) {
           observer.disconnect();
         }
       },
-      { rootMargin: "100px 0px" } // Start loading 100px before visible
+      { rootMargin: "200px 0px" } // Start loading 200px before visible for smoother scrolling
     );
 
     observer.observe(card);

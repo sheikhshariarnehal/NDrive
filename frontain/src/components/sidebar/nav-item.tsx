@@ -22,6 +22,7 @@ export const NavItem = memo(function NavItem({ href, label, icon: Icon, isActive
   return (
     <Link
       href={href}
+      prefetch={false}
       onClick={clearSearch}
       className={cn(
         "flex items-center gap-4 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-150",

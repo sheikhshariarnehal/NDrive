@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/app/providers/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { useFilesStore } from "@/store/files-store";
@@ -15,9 +15,14 @@ import type { DbFile, DbFolder } from "@/types/file.types";
 import { ViewModeToggle } from "@/components/file-view/view-mode-toggle";
 
 export default function RecentPage() {
+  const INITIAL_BATCH_SIZE = 24;
+  const GRID_BATCH_SIZE = 24;
+  
   const { user, guestSessionId } = useAuth();
   const { files, folders, dataLoaded, mergeFiles, mergeFolders, viewMode, setViewMode } = useFilesStore();
   const effectiveViewMode = useEffectiveViewMode();
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // The layout preloads a capped set. On the Recent page, fetch remaining
@@ -124,12 +129,46 @@ export default function RecentPage() {
     [folders]
   );
 
+  const visibleFiles = useMemo(
+    () => recentFiles.slice(0, visibleCount),
+    [recentFiles, visibleCount]
+  );
+
+  const canLoadMore = visibleFiles.length < recentFiles.length;
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_BATCH_SIZE);
+  }, [effectiveViewMode]);
+
+  useEffect(() => {
+    if (effectiveViewMode !== "grid" || !canLoadMore) return;
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setVisibleCount((count) => Math.min(count + GRID_BATCH_SIZE, recentFiles.length));
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [effectiveViewMode, canLoadMore, recentFiles.length]);
+
   if (!dataLoaded) {
     return (
       <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
-        <div>
-          <div className="h-6 w-32 bg-[#f1f3f4] rounded animate-pulse" />
-          <div className="h-3 w-56 bg-[#f1f3f4] rounded animate-pulse mt-2" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="h-7 sm:h-8 w-32 bg-[#f1f3f4] rounded animate-pulse" />
+            <div className="h-4 sm:h-5 w-56 bg-[#f1f3f4] rounded animate-pulse mt-1" />
+          </div>
+          <div className="mt-0.5 flex items-center gap-0 p-[1px] rounded-full bg-[#f1f3f4] animate-pulse">
+            <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+            <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+          </div>
         </div>
         <div className="skeleton-grid"><GridViewSkeleton folderCount={0} fileCount={8} /></div>
         <div className="skeleton-list"><ListViewSkeleton rowCount={8} /></div>
@@ -159,10 +198,18 @@ export default function RecentPage() {
             )}
             {recentFiles.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                {recentFiles.map((file) => (
-                  <FileCard key={file.id} file={file} />
+                {visibleFiles.map((file, index) => (
+                  <FileCard 
+                    key={file.id} 
+                    file={file} 
+                    priority={index < 6} // Only first 6 (top row) load eagerly with high priority
+                  />
                 ))}
               </div>
+            )}
+            {/* Observer target for infinite scrolling */}
+            {canLoadMore && effectiveViewMode === "grid" && (
+              <div ref={loadMoreRef} className="h-20 w-full" aria-hidden="true" />
             )}
           </div>
         ) : (

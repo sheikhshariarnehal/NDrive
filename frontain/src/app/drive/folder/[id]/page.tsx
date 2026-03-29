@@ -89,10 +89,18 @@ export default function FolderPage({
   if (!dataLoaded) {
     return (
       <div className="pt-2 sm:pt-4 space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-1">
-          <div className="h-4 w-16 bg-[#f1f3f4] rounded animate-pulse" />
-          <div className="h-4 w-4 bg-[#f1f3f4] rounded animate-pulse" />
-          <div className="h-4 w-24 bg-[#f1f3f4] rounded animate-pulse" />
+        <div className="flex items-center h-11 sm:h-14 sticky top-0 z-20 bg-surface-white -mx-2.5 px-2.5 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5">
+          <div className="flex items-center gap-1.5 animate-pulse flex-1">
+            <div className="h-5 w-16 sm:h-6 sm:w-20 bg-[#e8eaed] rounded" />
+            <div className="h-4 w-4 sm:h-5 sm:w-5 bg-[#e8eaed] rounded" />
+            <div className="h-5 w-24 sm:h-6 sm:w-32 bg-[#e8eaed] rounded" />
+          </div>
+          <div className="ml-auto flex items-center">
+            <div className="flex items-center gap-0 p-[1px] rounded-full bg-[#f1f3f4] animate-pulse">
+              <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+              <div className="h-7 w-7 rounded-full bg-[#e8eaed]" />
+            </div>
+          </div>
         </div>
         <div className="skeleton-grid"><GridViewSkeleton folderCount={1} fileCount={8} /></div>
         <div className="skeleton-list"><ListViewSkeleton rowCount={8} /></div>
@@ -122,6 +130,7 @@ export default function FolderPage({
                       ? `/drive/folder/${crumb.id}`
                       : "/drive"
                   }
+                  prefetch={false}
                   className="text-muted-foreground hover:text-foreground text-[17px] sm:text-[22px]"
                 >
                   {crumb.name}
@@ -169,8 +178,8 @@ export default function FolderPage({
             <section>
               <h2 className="text-sm font-medium text-[#202124] mb-3">Files</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                {folderFiles.map((file) => (
-                  <FileCard key={file.id} file={file} />
+                {folderFiles.map((file, index) => (
+                  <FileCard key={file.id} file={file} priority={index < 12} />
                 ))}
               </div>
             </section>

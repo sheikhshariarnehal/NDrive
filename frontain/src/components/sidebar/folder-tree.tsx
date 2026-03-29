@@ -72,6 +72,7 @@ const FolderTreeItem = memo(function FolderTreeItem({
         )}
         <Link
           href={`/drive/folder/${folder.id}`}
+          prefetch={false}
           className="flex items-center gap-3 flex-1 min-w-0 pr-1"
         >
           <Folder

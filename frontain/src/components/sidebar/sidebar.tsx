@@ -64,9 +64,8 @@ function SidebarLoadingSkeleton() {
   return (
     <>
       <div className="px-4 py-2 shrink-0 mt-1">
-        <div className="h-12 w-28 rounded-2xl border border-[#dadce0] bg-white animate-pulse" />
+        <div className="h-14 w-28 rounded-2xl border border-[#dadce0] bg-white animate-pulse" />
       </div>
-
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 mt-2" style={{ contain: "layout style" }}>
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={`nav-${i}`} className="h-10 rounded-full bg-[#e8eaed] animate-pulse" />

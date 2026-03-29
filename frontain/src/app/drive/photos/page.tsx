@@ -161,7 +161,7 @@ export default function PhotosPage() {
   if (isLoading || !dataLoaded) {
     return (
       <div className="pt-2 sm:p-4 md:p-6 pb-20 sm:pb-6">
-        <h1 className="text-xl sm:text-2xl font-medium text-[#202124] mb-4 sm:mb-6 px-4 sm:px-0">Photos</h1>
+        <h1 className="text-xl sm:text-2xl font-medium text-[#202124] mb-4 sm:mb-6 px-4 sm:px-0 hidden sm:block">Photos</h1>
         <LoadingSkeleton />
       </div>
     );
