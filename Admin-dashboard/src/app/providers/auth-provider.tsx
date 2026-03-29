@@ -12,6 +12,52 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { getGuestSessionId } from "@/lib/guest-session";
 
+const TELEGRAM_STATUS_CACHE_KEY = "ndrive_telegram_status";
+const TELEGRAM_CACHE_TTL_MS = 10 * 60 * 1000;
+
+interface TelegramStatusCache {
+  connected: boolean;
+  phone: string | null;
+  timestamp: number;
+  userId: string;
+}
+
+function getCachedTelegramStatus(userId: string): { connected: boolean; phone: string | null } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(TELEGRAM_STATUS_CACHE_KEY);
+    if (!raw) return null;
+    const cached: TelegramStatusCache = JSON.parse(raw);
+    if (cached.userId !== userId) return null;
+    if (Date.now() - cached.timestamp > TELEGRAM_CACHE_TTL_MS) return null;
+    return { connected: cached.connected, phone: cached.phone };
+  } catch {
+    return null;
+  }
+}
+
+function setCachedTelegramStatus(userId: string, connected: boolean, phone: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const cache: TelegramStatusCache = {
+      connected,
+      phone,
+      timestamp: Date.now(),
+      userId,
+    };
+    localStorage.setItem(TELEGRAM_STATUS_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Ignore localStorage failures
+  }
+}
+
+function clearTelegramStatusCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(TELEGRAM_STATUS_CACHE_KEY);
+  } catch {}
+}
+
 interface AuthContextType {
   user: User | null;
   guestSessionId: string | null;
@@ -86,20 +132,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
   const statusReqRef = useRef<Promise<void> | null>(null);
 
-  const fetchTelegramStatus = async () => {
+  const fetchTelegramStatus = async (userId: string, skipLoadingState = false) => {
     if (statusReqRef.current) return statusReqRef.current;
 
-    setIsTelegramStatusLoading(true);
+    if (!skipLoadingState) {
+      setIsTelegramStatusLoading(true);
+    }
+
     statusReqRef.current = (async () => {
       try {
         const res = await fetch("/api/telegram/status");
         if (res.ok) {
           const data = await res.json();
-          setIsTelegramConnected(!!data.connected);
-          setTelegramPhone(data.phone || null);
+          const connected = !!data.connected;
+          const phone = data.phone || null;
+          setIsTelegramConnected(connected);
+          setTelegramPhone(phone);
+          setCachedTelegramStatus(userId, connected, phone);
         } else {
           setIsTelegramConnected(false);
           setTelegramPhone(null);
+          setCachedTelegramStatus(userId, false, null);
         }
       } catch {
         // Non-fatal — status check failure doesn't block auth
@@ -114,7 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshTelegramStatus = () => {
-    fetchTelegramStatus();
+    if (user?.id) {
+      fetchTelegramStatus(user.id);
+    }
   };
 
   useEffect(() => {
@@ -141,12 +196,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentUser) {
           // Ensure the user has a public.users profile (fire-and-forget — don't block auth loading)
           ensureUserProfile(supabase, currentUser);
-          // Fetch Telegram connection status (fire-and-forget)
-          fetchTelegramStatus();
+          const cachedStatus = getCachedTelegramStatus(currentUser.id);
+          if (cachedStatus) {
+            setIsTelegramConnected(cachedStatus.connected);
+            setTelegramPhone(cachedStatus.phone);
+            setIsTelegramStatusLoading(false);
+            fetchTelegramStatus(currentUser.id, true);
+          } else {
+            fetchTelegramStatus(currentUser.id, false);
+          }
         } else {
           // Create guest session for unauthenticated users
           setGuestSessionId(getGuestSessionId());
           setIsTelegramStatusLoading(false);
+          clearTelegramStatusCache();
         }
       } catch (error) {
         console.error("Auth session error:", error);
@@ -169,10 +232,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setGuestSessionId(null);
         // Ensure profile on any auth state change (fire-and-forget — don't block renders)
         ensureUserProfile(supabase, currentUser);
-        fetchTelegramStatus();
+        const cachedStatus = getCachedTelegramStatus(currentUser.id);
+        if (cachedStatus) {
+          setIsTelegramConnected(cachedStatus.connected);
+          setTelegramPhone(cachedStatus.phone);
+          setIsTelegramStatusLoading(false);
+          fetchTelegramStatus(currentUser.id, true);
+        } else {
+          fetchTelegramStatus(currentUser.id, false);
+        }
       } else {
         setGuestSessionId(getGuestSessionId());
         setIsTelegramStatusLoading(false);
+        clearTelegramStatusCache();
       }
     });
 
@@ -185,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsTelegramConnected(false);
     setIsTelegramStatusLoading(false);
     setTelegramPhone(null);
+    clearTelegramStatusCache();
   };
 
   const isGuest = !user && !!guestSessionId;
