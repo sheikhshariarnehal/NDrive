@@ -29,6 +29,7 @@ export {
  */
 export interface ProgressSession {
   telegramProgress: number;
+  telegramUploadedBytes?: number;
 }
 
 /**
@@ -71,6 +72,7 @@ export async function waitForMessageSent(
   pendingMessage: Record<string, unknown>,
   fileSize: number = 0,
   session?: ProgressSession,
+  trackedLocalPath?: string,
 ): Promise<Record<string, unknown>> {
   const messageId = pendingMessage.id as number;
 
@@ -129,12 +131,21 @@ export async function waitForMessageSent(
       // Upload progress — reset idle timer
       if (update._ === "updateFile") {
         const file = update.file as Record<string, unknown> | undefined;
+        const local = file?.local as Record<string, unknown> | undefined;
         const remote = file?.remote as Record<string, unknown> | undefined;
-        if (remote?.is_uploading_active) {
+        const localPath = typeof local?.path === "string" ? local.path : null;
+        const isTargetFile = !trackedLocalPath || (localPath !== null && localPath === trackedLocalPath);
+
+        if (isTargetFile && remote?.is_uploading_active) {
           lastActivity = Date.now();
           // Update session progress if provided (chunked uploads poll this)
           if (session && fileSize > 0) {
-            const uploaded = (remote.uploaded_size as number) || 0;
+            const uploadedRaw = remote.uploaded_size;
+            const uploaded =
+              typeof uploadedRaw === "number" && Number.isFinite(uploadedRaw)
+                ? Math.max(0, Math.min(uploadedRaw, fileSize))
+                : 0;
+            session.telegramUploadedBytes = uploaded;
             session.telegramProgress = uploaded / fileSize;
           }
         }
@@ -144,6 +155,10 @@ export async function waitForMessageSent(
         update._ === "updateMessageSendSucceeded" &&
         (update.old_message_id as number) === messageId
       ) {
+        if (session && fileSize > 0) {
+          session.telegramUploadedBytes = fileSize;
+          session.telegramProgress = 1;
+        }
         cleanup();
         resolve(update.message as Record<string, unknown>);
       } else if (
@@ -343,6 +358,7 @@ async function sendWithRateLimitRetries(
   fileSize: number,
   session: ProgressSession | undefined,
   label: string,
+  trackedLocalPath?: string,
 ): Promise<Record<string, unknown>> {
   const maxSendAttempts = Math.max(
     1,
@@ -352,7 +368,7 @@ async function sendWithRateLimitRetries(
   for (let attempt = 1; attempt <= maxSendAttempts; attempt++) {
     try {
       const pending = (await client.invoke(params)) as Record<string, unknown>;
-      return await waitForMessageSent(client, pending, fileSize, session);
+      return await waitForMessageSent(client, pending, fileSize, session, trackedLocalPath);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       const waitSec = parseFloodWait(errMsg);
@@ -406,6 +422,7 @@ export async function sendMessageWithFallback(
         fileSize,
         session,
         "primary send",
+        localFilePath,
       );
     } catch (sendErr) {
       const sendErrMsg = sendErr instanceof Error ? sendErr.message : String(sendErr);
@@ -417,6 +434,7 @@ export async function sendMessageWithFallback(
           fileSize,
           session,
           "document fallback",
+          localFilePath,
         );
       } else {
         throw sendErr;

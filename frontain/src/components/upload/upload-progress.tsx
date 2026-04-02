@@ -69,7 +69,6 @@ export function UploadProgress() {
     () => uploadQueue.filter((i) => i.status === "error").length,
     [uploadQueue],
   );
-  const doneCount = successCount + duplicateCount;
   const allDone = activeCount === 0 && uploadQueue.length > 0;
   const totalCount = uploadQueue.length;
 
@@ -91,6 +90,13 @@ export function UploadProgress() {
   const handleShare = useCallback((fileName: string) => {
     // TODO: hook into share modal / link
     console.log("Share:", fileName);
+  }, []);
+
+  const getUploadingLabel = useCallback((progress: number): string => {
+    if (progress >= 99) return "Finalizing";
+    if (progress >= 82) return "Uploading to Telegram";
+    if (progress >= 5) return "Uploading chunks";
+    return "Preparing";
   }, []);
 
   if (uploadQueue.length === 0) return null;
@@ -211,7 +217,9 @@ export function UploadProgress() {
                     <span className="text-red-500">{item.error || "Upload failed"}</span>
                   )}
                   {item.status === "uploading" && (
-                    <>Uploading &middot; {formatBytes(item.bytesLoaded)} / {formatBytes(item.bytesTotal)}</>
+                    <>
+                      {getUploadingLabel(item.progress)} &middot; {item.progress}% &middot; {formatBytes(item.bytesLoaded)} / {formatBytes(item.bytesTotal)}
+                    </>
                   )}
                   {item.status === "pending" && (
                     <>Waiting &middot; 0 bytes / {formatBytes(item.bytesTotal || item.file.size)}</>

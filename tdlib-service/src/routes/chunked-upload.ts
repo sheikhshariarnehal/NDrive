@@ -48,6 +48,7 @@ interface UploadSession {
   assembledPath: string;         // output file being built progressively
   assembledBytes: number;        // bytes flushed so far
   telegramProgress: number;      // 0–1 fraction of Telegram upload
+  telegramUploadedBytes: number; // uploaded bytes reported by TDLib
   createdAt: number;
   dir: string;
   /** Storage routing: 'bot' (guest/legacy) or 'user' (personal Telegram). */
@@ -320,6 +321,7 @@ router.post("/init", (req: Request, res: Response) => {
     assembledPath,
     assembledBytes: 0,
     telegramProgress: 0,
+    telegramUploadedBytes: 0,
     createdAt: Date.now(),
     dir,
     storageType: storageType || "bot",
@@ -417,6 +419,7 @@ router.get("/status", (req: Request, res: Response) => {
     totalChunks: session.totalChunks,
     flushedBytes: session.assembledBytes,
     telegramProgress: session.telegramProgress,
+    telegramUploadedBytes: session.telegramUploadedBytes,
   });
 });
 
@@ -496,6 +499,7 @@ router.get("/complete-status", (req: Request, res: Response) => {
     uploadId: job.uploadId,
     state: job.state,
     telegramProgress: session?.telegramProgress ?? (job.state === "success" ? 1 : 0),
+    telegramUploadedBytes: session?.telegramUploadedBytes ?? null,
     error: job.error,
   });
 });

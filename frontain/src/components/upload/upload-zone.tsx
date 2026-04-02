@@ -258,6 +258,11 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     fileHashPromise: Promise<string | null>,
     thumbnailPromise: Promise<string | null>,
   ) => {
+    const CHUNK_PHASE_PROGRESS = 82;
+    const TELEGRAM_PHASE_PROGRESS = 16;
+    const TELEGRAM_POLL_INTERVAL_ACTIVE_MS = 700;
+    const TELEGRAM_POLL_INTERVAL_IDLE_MS = 1500;
+
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     // 1. Init session (small JSON, goes through Vercel — fast)
@@ -287,10 +292,12 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     const updateChunkProgress = () => {
       const loaded = chunkBytesLoaded.reduce((a, b) => a + b, 0);
       const total = file.size;
-      // Chunk upload phase = 0–80% of the bar
-      const pct = Math.round((loaded / total) * 80);
-      updateUploadProgress(queueId, pct);
-      updateUploadBytes(queueId, loaded, total);
+      const chunkFraction = total > 0 ? loaded / total : 0;
+      // Keep UI bytes aligned to the same staged progress model as the percent bar.
+      const stagedLoaded = Math.round(file.size * chunkFraction * (CHUNK_PHASE_PROGRESS / 100));
+      const pct = Math.round(chunkFraction * CHUNK_PHASE_PROGRESS);
+      updateUploadProgress(queueId, Math.min(pct, CHUNK_PHASE_PROGRESS));
+      updateUploadBytes(queueId, stagedLoaded, total);
     };
 
     const uploadSingleChunk = async (i: number) => {
@@ -355,7 +362,8 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     await Promise.all(workers);
 
     // 3. Complete async: start Telegram upload job, poll status, finalize DB insert.
-    updateUploadProgress(queueId, 82);
+    updateUploadProgress(queueId, CHUNK_PHASE_PROGRESS);
+    updateUploadBytes(queueId, Math.round(file.size * (CHUNK_PHASE_PROGRESS / 100)), file.size);
 
     const [resolvedHash, resolvedThumbnail] = await Promise.all([
       resolvePromiseSafely(fileHashPromise, null, "Hash computation"),
@@ -383,9 +391,10 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       const errData = await completeStartRes.json().catch(() => ({}));
       if (completeStartRes.status === 429) {
         const retryAfter = errData.retry_after ?? 30;
-        const err = new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
-        (err as any).retryAfter = retryAfter;
-        (err as any).isRateLimit = true;
+        const err: Error & { retryAfter?: number; isRateLimit?: boolean } =
+          new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
+        err.retryAfter = retryAfter;
+        err.isRateLimit = true;
         throw err;
       }
       throw new Error(errData.error || `Complete start failed with status ${completeStartRes.status}`);
@@ -398,35 +407,65 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
     }
 
     let attempts = 0;
-    const maxAttempts = 720; // 24 minutes at 2s interval
+    let pollDelayMs = 300;
+    let lastTelegramProgress = 0;
+    const maxAttempts = 900; // ~22.5 minutes at 1.5s interval
     while (attempts < maxAttempts) {
       attempts++;
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, pollDelayMs));
 
-      const statusRes = await fetch(`/api/upload/complete/status?jobId=${encodeURIComponent(jobId)}`);
+      const statusRes = await fetch(
+        `/api/upload/complete/status?jobId=${encodeURIComponent(jobId)}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
       const status = await statusRes.json().catch(() => ({}));
 
       if (!statusRes.ok) {
         if (statusRes.status === 429) {
           const retryAfter = status.retry_after ?? 30;
-          const err = new Error(status.error || `Rate limited. Retry after ${retryAfter}s`);
-          (err as any).retryAfter = retryAfter;
-          (err as any).isRateLimit = true;
+          const err: Error & { retryAfter?: number; isRateLimit?: boolean } =
+            new Error(status.error || `Rate limited. Retry after ${retryAfter}s`);
+          err.retryAfter = retryAfter;
+          err.isRateLimit = true;
           throw err;
         }
+        pollDelayMs = TELEGRAM_POLL_INTERVAL_IDLE_MS;
         continue;
       }
 
-      if (status.telegramProgress != null) {
-        const pct = 82 + Math.round(status.telegramProgress * 16);
+      const progressFromBytes =
+        typeof status.telegramUploadedBytes === "number" && file.size > 0
+          ? Math.min(Math.max(status.telegramUploadedBytes / file.size, 0), 1)
+          : null;
+      const progressFromRatio =
+        typeof status.telegramProgress === "number"
+          ? Math.min(Math.max(status.telegramProgress, 0), 1)
+          : null;
+
+      if (progressFromBytes !== null || progressFromRatio !== null) {
+        const nextProgress = progressFromBytes ?? progressFromRatio ?? 0;
+        const normalizedProgress = Math.max(lastTelegramProgress, nextProgress);
+        lastTelegramProgress = normalizedProgress;
+
+        const pct = CHUNK_PHASE_PROGRESS + Math.round(normalizedProgress * TELEGRAM_PHASE_PROGRESS);
+        const stagedLoaded = Math.round(
+          file.size * ((CHUNK_PHASE_PROGRESS + normalizedProgress * TELEGRAM_PHASE_PROGRESS) / 100)
+        );
         updateUploadProgress(queueId, Math.min(pct, 98));
+        updateUploadBytes(queueId, stagedLoaded, file.size);
       }
+
+      pollDelayMs = status.state === "uploading"
+        ? TELEGRAM_POLL_INTERVAL_ACTIVE_MS
+        : TELEGRAM_POLL_INTERVAL_IDLE_MS;
 
       if (status.state === "failed") {
         throw new Error(status.error || "Telegram upload failed");
       }
 
       if (status.state === "success") {
+        updateUploadProgress(queueId, 99);
+        updateUploadBytes(queueId, Math.round(file.size * 0.99), file.size);
         break;
       }
     }
@@ -455,15 +494,17 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
       const errData = await finalizeRes.json().catch(() => ({}));
       if (finalizeRes.status === 429) {
         const retryAfter = errData.retry_after ?? 30;
-        const err = new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
-        (err as any).retryAfter = retryAfter;
-        (err as any).isRateLimit = true;
+        const err: Error & { retryAfter?: number; isRateLimit?: boolean } =
+          new Error(errData.error || `Rate limited. Retry after ${retryAfter}s`);
+        err.retryAfter = retryAfter;
+        err.isRateLimit = true;
         throw err;
       }
       throw new Error(errData.error || `Finalize failed with status ${finalizeRes.status}`);
     }
 
     const data = await finalizeRes.json();
+    updateUploadBytes(queueId, file.size, file.size);
     updateUploadProgress(queueId, 100);
     return data;
   }, [user, guestSessionId, updateUploadProgress, updateUploadBytes, CHUNK_SIZE]);
@@ -707,6 +748,8 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
 
           const data = JSON.parse(response);
           addFile(data.file);
+          updateUploadProgress(queueId, 100);
+          updateUploadBytes(queueId, file.size, file.size);
           updateUploadStatus(queueId, "success");
         } else {
           // Retry attempts: use fetch
@@ -730,6 +773,8 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
 
           const data = await response.json();
           addFile(data.file);
+          updateUploadProgress(queueId, 100);
+          updateUploadBytes(queueId, file.size, file.size);
           updateUploadStatus(queueId, "success");
         }
       } catch (error) {

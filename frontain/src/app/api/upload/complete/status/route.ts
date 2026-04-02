@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       `${BACKEND_URL}/api/chunked-upload/complete-status?jobId=${encodeURIComponent(jobId)}`,
       {
         method: "GET",
+        cache: "no-store",
         headers: {
           "X-API-Key": API_KEY,
         },
@@ -28,7 +29,12 @@ export async function GET(request: NextRequest) {
     );
 
     const data = await response.json().catch(() => ({}));
-    return NextResponse.json(data, { status: response.status });
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   } catch (error) {
     console.error("[upload/complete/status] Error:", error);
     return NextResponse.json(
