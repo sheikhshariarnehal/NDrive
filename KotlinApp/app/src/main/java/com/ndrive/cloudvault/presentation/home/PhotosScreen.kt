@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,14 +20,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.ndrive.cloudvault.presentation.home.components.FileCard
+import coil.compose.AsyncImage
+import com.ndrive.cloudvault.presentation.common.shimmerEffect
 import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 import kotlinx.coroutines.delay
+
+@Composable
+fun PhotoThumbnail(url: String, isLoading: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFE0E0E0)) // placeholder color like grey
+    ) {
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize().shimmerEffect())
+        } else {
+            // Simulated photo colors using a background before image loads
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF81D4FA))) 
+            // In a real app you use AsyncImage here
+            /*
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            */
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,8 +116,7 @@ fun PhotosScreen(navController: NavController) {
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         },
         floatingActionButton = {
@@ -118,30 +146,30 @@ fun PhotosScreen(navController: NavController) {
         bottomBar = { NDriveBottomNav(navController) }
     ) { padding ->
         LazyVerticalGrid(
-            columns = if (isGridView) GridCells.Fixed(3) else GridCells.Fixed(1), // 3 columns for photos grid
+            columns = if (isGridView) GridCells.Fixed(3) else GridCells.Fixed(1), 
             contentPadding = PaddingValues(
-                start = if (isGridView) 16.dp else 0.dp,
-                end = if (isGridView) 16.dp else 0.dp,
+                start = 12.dp, // overall horizontal padding
+                end = 12.dp,
                 top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 88.dp
             ),
-            horizontalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp), // Google photos grid usually has ~2-4 dp gap
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = if(isGridView) 0.dp else 16.dp, vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Photos",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.DarkGray
+                        "AUGUST", // example Month header
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray, letterSpacing = 1.sp
                     )
                     IconButton(onClick = { isGridView = !isGridView }) {
                         Icon(
@@ -154,36 +182,62 @@ fun PhotosScreen(navController: NavController) {
             }
 
             if (isLoading) {
-                items(15) {
-                    if (isGridView) FileCard(name = "", isLoading = true) {}
+                items(12) {
+                    if (isGridView) PhotoThumbnail(url = "", isLoading = true)
                     else {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(64.dp)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color.LightGray.copy(alpha=0.3f))
                         )
                     }
                 }
             } else {
-                val mockPhotos = listOf(
-                    Triple("IMG_20231015.jpg", "Yesterday", Color(0xFFDB4437)),
-                    Triple("Screenshot_124.png", "Yesterday", Color(0xFFDB4437)),
-                    Triple("IMG_20231010.jpg", "Last week", Color(0xFFDB4437)),
-                    Triple("Family_Portrait.jpg", "Last week", Color(0xFFDB4437)),
-                    Triple("Sunset.jpg", "Last month", Color(0xFFDB4437))
-                )
-
-                items(mockPhotos.size) { index ->
+                // Section 1 Mock photos
+                val section1Count = 6
+                items(section1Count) { index ->
                     if (isGridView) {
-                        FileCard(name = mockPhotos[index].first, isImage = true) {}
+                        PhotoThumbnail(url = "mock$index") 
                     } else {
                         FileRow(
-                            name = mockPhotos[index].first,
-                            subtitle = mockPhotos[index].second,
-                            iconTint = mockPhotos[index].third,
+                            name = "IMG_000$index.jpg",
+                            subtitle = "August 12",
+                            iconTint = Color(0xFFDB4437),
+                            isLoading = false
+                        ) {}
+                    }
+                }
+                
+                // Section 2 Header
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        "JULY",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+                    )
+                }
+
+                // Section 2 Mock photos
+                val section2Count = 9
+                items(section2Count) { index ->
+                    if (isGridView) {
+                        // Some different color backgrounds for mockup visually
+                        Box(
+                            modifier = Modifier
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if(index % 2 == 0) Color(0xFFA1E7D1) else Color(0xFFE8F5E9))
+                        )
+                    } else {
+                        FileRow(
+                            name = "DSC_092$index.jpg",
+                            subtitle = "July 1",
+                            iconTint = Color(0xFFDB4437),
                             isLoading = false
                         ) {}
                     }
