@@ -28,6 +28,8 @@ import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 import kotlinx.coroutines.delay
 
+import com.ndrive.cloudvault.presentation.home.components.GridListToggle
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StarredScreen(navController: NavController) {
@@ -134,7 +136,7 @@ fun StarredScreen(navController: NavController) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = if (isGridView) 0.dp else 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -144,13 +146,7 @@ fun StarredScreen(navController: NavController) {
                         fontWeight = FontWeight.Medium,
                         color = Color.DarkGray
                     )
-                    IconButton(onClick = { isGridView = !isGridView }) {
-                        Icon(
-                            imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                            contentDescription = "Toggle View",
-                            tint = Color.DarkGray
-                        )
-                    }
+                    GridListToggle(isGridView = isGridView, onToggle = { isGridView = !isGridView })
                 }
             }
 

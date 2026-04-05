@@ -28,6 +28,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.ndrive.cloudvault.presentation.common.shimmerEffect
 import com.ndrive.cloudvault.presentation.home.components.FileRow
+import com.ndrive.cloudvault.presentation.home.components.GridListToggle
 import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 import kotlinx.coroutines.delay
 
@@ -56,6 +57,10 @@ fun PhotoThumbnail(url: String, isLoading: Boolean = false) {
         }
     }
 }
+
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,13 +176,7 @@ fun PhotosScreen(navController: NavController) {
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray, letterSpacing = 1.sp
                     )
-                    IconButton(onClick = { isGridView = !isGridView }) {
-                        Icon(
-                            imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                            contentDescription = "Toggle View",
-                            tint = Color.DarkGray
-                        )
-                    }
+                    GridListToggle(isGridView = isGridView, onToggle = { isGridView = !isGridView })
                 }
             }
 
