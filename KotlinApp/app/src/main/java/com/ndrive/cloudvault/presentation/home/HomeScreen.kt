@@ -1,5 +1,12 @@
 ﻿package com.ndrive.cloudvault.presentation.home
 
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,6 +38,7 @@ import kotlinx.coroutines.delay
 
 import com.ndrive.cloudvault.presentation.home.components.GridListToggle
 import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
+import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +48,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     
     var showCreateSheet by remember { mutableStateOf(false) }
+    var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     val backgroundColor = Color(0xFFF8F9FA) // Light grey background like Google Drive
@@ -90,21 +99,28 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Menu, "Menu", tint = Color.DarkGray)
-                        Spacer(Modifier.width(16.dp))
+                        IconButton(onClick = { showAppDrawer = true }) {
+                            Icon(Icons.Default.Menu, "Menu", tint = Color.DarkGray)
+                        }
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Search in Drive",
                             fontSize = 16.sp,
                             color = Color.DarkGray,
                             modifier = Modifier.weight(1f)
                         )
-                        Surface(
-                            shape = CircleShape,
-                            color = avatarColor,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("R", color = Color.White, fontWeight = FontWeight.Medium)
+                        Box {
+                            Surface(
+                                shape = CircleShape,
+                                color = avatarColor,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .clickable { navController.navigate("profile_route") }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("R", color = Color.White, fontWeight = FontWeight.Medium)
+                                }
                             }
                         }
                     }
@@ -247,4 +263,9 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
             onDismissRequest = { showCreateSheet = false }
         )
     }
+
+    AppDrawer(
+        isOpen = showAppDrawer,
+        onClose = { showAppDrawer = false }
+    )
 }
