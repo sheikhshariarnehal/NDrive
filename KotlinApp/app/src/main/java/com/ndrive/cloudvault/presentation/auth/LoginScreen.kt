@@ -1,23 +1,34 @@
 package com.ndrive.cloudvault.presentation.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+
+import com.ndrive.cloudvault.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -29,6 +40,7 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     val isDark = isSystemInDarkTheme()
 
     val topBgColor = if (isDark) Color(0xFF1E2638) else Color(0xFFCEE3FA)
@@ -86,7 +98,8 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 48.dp), // Start content slightly below the rounded top
+                    .padding(top = 48.dp) // Start content slightly below the rounded top
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -99,51 +112,62 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Email Field
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = "Email", fontSize = 12.sp, color = subtleTextColor)
-                    TextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = primaryColor,
-                            unfocusedIndicatorColor = dividerColor,
-                        ),
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    )
-                }
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon", tint = subtleTextColor)
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        unfocusedBorderColor = dividerColor,
+                        focusedLabelColor = primaryColor,
+                        unfocusedLabelColor = subtleTextColor
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Password Field
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Password", fontSize = 12.sp, color = subtleTextColor)
-                        Text(
-                            text = "Forgot?", 
-                            fontSize = 12.sp, 
-                            color = textColor, 
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { /* Handle forgot password */ }
-                        )
-                    }
-                    TextField(
+                    OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        visualTransformation = PasswordVisualTransformation(),
+                        label = { Text("Password") },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Lock, contentDescription = "Password Icon", tint = subtleTextColor)
+                        },
+                        trailingIcon = {
+                            val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            val description = if (passwordVisible) "Hide password" else "Show password"
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = description, tint = subtleTextColor)
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = primaryColor,
-                            unfocusedIndicatorColor = dividerColor,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            unfocusedBorderColor = dividerColor,
+                            focusedLabelColor = primaryColor,
+                            unfocusedLabelColor = subtleTextColor
                         ),
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Forgot password?", 
+                        fontSize = 14.sp, 
+                        color = primaryColor, 
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clickable { /* Handle forgot password */ }
                     )
                 }
 
@@ -154,11 +178,11 @@ fun LoginScreen(
                     onClick = onNavigateToHome,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(8.dp),
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                 ) {
-                    Text("Log In", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Log In", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -177,7 +201,11 @@ fun LoginScreen(
                         modifier = Modifier.weight(1f).height(45.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "G", color = Color(0xFFDB4437), fontWeight = FontWeight.Bold)
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_google),
+                            contentDescription = "Google",
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "Google", color = textColor, fontSize = 14.sp)
                     }
@@ -186,7 +214,11 @@ fun LoginScreen(
                         modifier = Modifier.weight(1f).height(45.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "f", color = Color(0xFF4267B2), fontWeight = FontWeight.Bold)
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_facebook),
+                            contentDescription = "Facebook",
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "Facebook", color = textColor, fontSize = 14.sp)
                     }
