@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -31,12 +32,12 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: androidx.navigation.NavController) {
+fun FilesScreen(navController: androidx.navigation.NavController) {
     var isGridView by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    val backgroundColor = Color(0xFFF8F9FA) // Light grey background like Google Drive
+    val backgroundColor = Color(0xFFF8F9FA) 
     val searchBarColor = Color(0xFFEDF2FA)
     val avatarColor = Color(0xFF4C6A9B)
     val primaryColor = Color(0xFF0B57D0)
@@ -94,7 +95,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Custom Tab Row
+                // Custom Tab Row for Files
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = backgroundColor,
@@ -104,9 +105,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                             height = 3.dp,
-                            color = primaryColor,
-                            // Rounded indicator
-                            
+                            color = primaryColor
                         )
                     }
                 ) {
@@ -115,7 +114,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                         onClick = { selectedTabIndex = 0 },
                         text = {
                             Text(
-                                "Suggested",
+                                "My Drive",
                                 fontWeight = if (selectedTabIndex == 0) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (selectedTabIndex == 0) primaryColor else Color.DarkGray
                             )
@@ -126,7 +125,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                         onClick = { selectedTabIndex = 1 },
                         text = {
                             Text(
-                                "Activity",
+                                "Computers",
                                 fontWeight = if (selectedTabIndex == 1) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (selectedTabIndex == 1) primaryColor else Color.DarkGray
                             )
@@ -136,11 +135,10 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
             }
         },
         floatingActionButton = {
-            // Updated '+ New' FAB matching Google Drive shadow & color
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFFE8F0FE),
-                shadowElevation = 4.dp, // Soft shadow
+                shadowElevation = 4.dp, 
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 8.dp)
                     .clickable { /* New Action */ }
@@ -168,7 +166,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                 start = if (isGridView) 16.dp else 0.dp,
                 end = if (isGridView) 16.dp else 0.dp,
                 top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 88.dp // Space for scrolling under FAB
+                bottom = padding.calculateBottomPadding() + 88.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
@@ -183,7 +181,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Files",
+                        "Name",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         color = Color.DarkGray
@@ -202,7 +200,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                 items(8) {
                     if (isGridView) FileCard(name = "", isLoading = true) {}
                     else {
-                        Box( // Provide shimmer skeleton matching row height
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(64.dp)
@@ -213,15 +211,47 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     }
                 }
             } else {
-                val mockFiles = listOf(
-                    Triple("Monthly Notes", "You edited \u2022 10:23 AM", Color(0xFF4285F4)),
-                    Triple("Leadership & Organization...", "Mustafa Krishnamurthy replied...", Color(0xFFF4B400)),
-                    Triple("Monthly Forecast", "You edited \u2022 Nov 1, 2022", Color(0xFF0F9D58)),
-                    Triple("Monthly Revenue", "You edited \u2022 Nov 1, 2022", Color(0xFF0F9D58)),
-                    Triple("Q4 Proposal", "Rose James commented \u2022 Oct 31...", Color(0xFFDB4437)),
-                    Triple("Project Harrison Tracker", "You opened \u2022 Oct 31, 2022", Color(0xFF0F9D58)),
-                    Triple("Acme_ExpenseForm", "You edited \u2022 Oct 31, 2022", Color(0xFF4285F4))
+                val mockFolders = listOf(
+                    "Work Documents", "Vacation Photos", "Backups"
                 )
+                val mockFiles = listOf(
+                    Triple("Budget Q3.xlsx", "Modified Today", Color(0xFF0F9D58)),
+                    Triple("Presentation.pptx", "Modified Yesterday", Color(0xFFF4B400)),
+                    Triple("Resume.pdf", "Modified 3 days ago", Color(0xFFDB4437))
+                )
+
+                // Folders Header
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                   Text(
+                        "Folders", 
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.DarkGray
+                   )
+                }
+
+                items(mockFolders.size) { index ->
+                    if (isGridView) {
+                        FileCard(name = mockFolders[index], isImage = false) {}
+                    } else {
+                        FileRow(
+                            name = mockFolders[index],
+                            subtitle = "2 files",
+                            iconTint = Color(0xFF5F6368),
+                            isLoading = false
+                        ) {}
+                    }
+                }
+
+                // Files Header
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                   Text(
+                        "Files", 
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.DarkGray
+                   )
+                }
 
                 items(mockFiles.size) { index ->
                     if (isGridView) {

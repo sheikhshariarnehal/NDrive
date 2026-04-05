@@ -1,4 +1,4 @@
-package com.ndrive.cloudvault.presentation.home.components
+﻿package com.ndrive.cloudvault.presentation.home.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -18,11 +18,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @Composable
-fun NDriveBottomNav() {
-    var selectedItem by remember { mutableIntStateOf(0) }
+fun NDriveBottomNav(navController: NavController) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     val items = listOf("Home", "Starred", "Shared", "Files")
+    val routes = listOf("home", "starred", "shared", "files")
+    
     val selectedIcons = listOf(
         Icons.Filled.Home,
         Icons.Filled.Star,
@@ -41,13 +47,21 @@ fun NDriveBottomNav() {
             NavigationBarItem(
                 icon = {
                     Icon(
-                        imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
+                        imageVector = if (currentRoute == routes[index]) selectedIcons[index] else unselectedIcons[index],
                         contentDescription = item
                     )
                 },
                 label = { Text(item) },
-                selected = selectedItem == index,
-                onClick = { selectedItem = index }
+                selected = currentRoute == routes[index],
+                onClick = { 
+                    if(currentRoute != routes[index]) {
+                        navController.navigate(routes[index]) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                }
             )
         }
     }

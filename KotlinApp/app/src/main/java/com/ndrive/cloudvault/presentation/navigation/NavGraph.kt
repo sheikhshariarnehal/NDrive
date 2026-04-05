@@ -1,12 +1,21 @@
-package com.ndrive.cloudvault.presentation.navigation
+﻿package com.ndrive.cloudvault.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.ndrive.cloudvault.presentation.auth.LoginScreen
 import com.ndrive.cloudvault.presentation.auth.SignupScreen
 import com.ndrive.cloudvault.presentation.home.HomeScreen
+import com.ndrive.cloudvault.presentation.home.FilesScreen
+import com.ndrive.cloudvault.presentation.home.StarredScreen
+import androidx.compose.material3.Scaffold
+import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 
 @Composable
 fun NDriveNavGraph(navController: NavHostController) {
@@ -24,7 +33,19 @@ fun NDriveNavGraph(navController: NavHostController) {
             )
         }
         composable("home") {
-            HomeScreen()
+            HomeScreen(navController)
+        }
+        composable("files") {
+            FilesScreen(navController)
+        }
+        composable("starred") {
+            StarredScreen(navController)
+        }
+        composable("shared") {
+            // Placeholder
+            Scaffold(bottomBar = { NDriveBottomNav(navController) }) { padding ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Shared Screen") }
+            }
         }
     }
 }
