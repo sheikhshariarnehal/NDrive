@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
@@ -5,6 +7,26 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
 }
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun String.escapeForBuildConfig(): String =
+    replace("\\", "\\\\").replace("\"", "\\\"")
+
+val supabaseUrl =
+    localProperties.getProperty("SUPABASE_URL")
+        ?: System.getenv("SUPABASE_URL")
+        ?: "https://zcigqsiovqqldlsnwiqd.supabase.co"
+
+val supabaseAnonKey =
+    localProperties.getProperty("SUPABASE_ANON_KEY")
+        ?: System.getenv("SUPABASE_ANON_KEY")
+        ?: ""
 
 android {
     namespace = "com.ndrive.cloudvault"
@@ -16,6 +38,17 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${supabaseUrl.escapeForBuildConfig()}\""
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${supabaseAnonKey.escapeForBuildConfig()}\""
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -83,6 +116,7 @@ dependencies {
     // Supabase
     implementation(libs.supabase.gotrue)
     implementation(libs.supabase.compose.auth)
+    implementation(libs.supabase.postgrest)
     implementation(libs.ktor.client.android)
 
     // Background

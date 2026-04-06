@@ -1,2 +1,7 @@
 package com.ndrive.cloudvault.domain.repository
-interface FolderRepository { }
+
+import com.ndrive.cloudvault.domain.model.DriveFolder
+
+interface FolderRepository {
+	suspend fun getRootFolders(limit: Int = 30): Result<List<DriveFolder>>
+}

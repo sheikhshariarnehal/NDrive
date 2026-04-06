@@ -1,2 +1,9 @@
 package com.ndrive.cloudvault.domain.model
-class DriveFolder { }
+
+data class DriveFolder(
+	val id: String,
+	val name: String,
+	val parentId: String?,
+	val updatedAt: String?,
+	val color: String?
+)

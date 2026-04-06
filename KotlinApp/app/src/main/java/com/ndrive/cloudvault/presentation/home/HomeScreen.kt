@@ -1,78 +1,80 @@
 ﻿package com.ndrive.cloudvault.presentation.home
 
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.ManageAccounts
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.runtime.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.ndrive.cloudvault.presentation.home.components.AppDrawer
+import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
 import com.ndrive.cloudvault.presentation.home.components.FileCard
 import com.ndrive.cloudvault.presentation.home.components.FileRow
-import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
-import kotlinx.coroutines.delay
-
+import com.ndrive.cloudvault.presentation.home.components.FolderCard
 import com.ndrive.cloudvault.presentation.home.components.GridListToggle
-import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
-import com.ndrive.cloudvault.presentation.home.components.AppDrawer
+import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 import com.ndrive.cloudvault.presentation.home.components.TopSearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: androidx.navigation.NavController) {
+fun HomeScreen(
+    navController: NavController,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
     var isGridView by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
     var selectedTabIndex by remember { mutableStateOf(0) }
-    
     var showCreateSheet by remember { mutableStateOf(false) }
     var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    val visibleFolders = remember(uiState.folders, uiState.query) { viewModel.filteredFolders() }
+    val visibleFiles = remember(uiState.files, uiState.query) { viewModel.filteredFiles() }
 
     val backgroundColor = MaterialTheme.colorScheme.background
-    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
-    val avatarColor = MaterialTheme.colorScheme.primary
     val primaryColor = MaterialTheme.colorScheme.primary
-
-    LaunchedEffect(Unit) {
-        delay(1200)
-        isLoading = false
-    }
-
-    val mockFiles = remember {
-        listOf(
-            Triple("Monthly Notes", "You edited \u2022 10:23 AM", Color(0xFF4285F4)),
-            Triple("Leadership & Organization...", "Mustafa Krishnamurthy replied...", Color(0xFFF4B400)),
-            Triple("Monthly Forecast", "You edited \u2022 Nov 1, 2022", Color(0xFF0F9D58)),
-            Triple("Monthly Revenue", "You edited \u2022 Nov 1, 2022", Color(0xFF0F9D58)),
-            Triple("Q4 Proposal", "Rose James commented \u2022 Oct 31...", Color(0xFFDB4437)),
-            Triple("Project Harrison Tracker", "You opened \u2022 Oct 31, 2022", Color(0xFF0F9D58)),
-            Triple("Acme_ExpenseForm", "You edited \u2022 Oct 31, 2022", Color(0xFF4285F4))
-        )
-    }
 
     Scaffold(
         containerColor = backgroundColor,
@@ -84,27 +86,29 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     .statusBarsPadding()
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
-                // Beautiful Pill Search Bar
                 TopSearchBar(
                     onMenuClick = { showAppDrawer = true },
-                    onProfileClick = { navController.navigate("profile_route") }
+                    onProfileClick = { navController.navigate("profile_route") },
+                    onSearchClick = { navController.navigate("search") }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Custom Tab Row
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = backgroundColor,
                     contentColor = primaryColor,
-                    divider = { HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant) },
+                    divider = {
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    },
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                             height = 3.dp,
-                            color = primaryColor,
-                            // Rounded indicator
-                            
+                            color = primaryColor
                         )
                     }
                 ) {
@@ -134,11 +138,10 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
             }
         },
         floatingActionButton = {
-            // Updated '+ New' FAB matching Google Drive shadow & color
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
-                shadowElevation = 4.dp, // Soft shadow
+                shadowElevation = 4.dp,
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 8.dp)
                     .clickable { showCreateSheet = true }
@@ -147,7 +150,11 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "New", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "New",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "New",
@@ -166,7 +173,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                 start = if (isGridView) 16.dp else 0.dp,
                 end = if (isGridView) 16.dp else 0.dp,
                 top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 88.dp // Space for scrolling under FAB
+                bottom = padding.calculateBottomPadding() + 88.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
@@ -181,7 +188,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Files",
+                        text = "Home",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -190,37 +197,140 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                 }
             }
 
-            if (isLoading) {
-                items(8) {
-                    if (isGridView) FileCard(name = "", isLoading = true) {}
-                    else {
-                        Box( // Provide shimmer skeleton matching row height
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.LightGray.copy(alpha=0.3f))
+            uiState.errorMessage?.let { errorMessage ->
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledTonalButton(onClick = { viewModel.refresh() }) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (uiState.isLoading) {
+                items(10) {
+                    if (isGridView) {
+                        FileCard(name = "", isLoading = true) {}
+                    } else {
+                        FileRow(name = "", subtitle = "", isLoading = true) {}
                     }
                 }
             } else {
-                items(mockFiles.size) { index ->
+                if (visibleFolders.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = "Folders",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                horizontal = if (isGridView) 0.dp else 16.dp,
+                                vertical = 8.dp
+                            )
+                        )
+                    }
+
+                    items(visibleFolders.size) { index ->
+                        val folder = visibleFolders[index]
+                        if (isGridView) {
+                            FileCard(name = folder.name, isImage = false) {}
+                        } else {
+                            FolderCard(name = folder.name) {}
+                        }
+                    }
+                }
+
+                if (visibleFiles.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = "Files",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                horizontal = if (isGridView) 0.dp else 16.dp,
+                                vertical = 8.dp
+                            )
+                        )
+                    }
+                }
+
+                items(visibleFiles.size) { index ->
+                    val file = visibleFiles[index]
                     if (isGridView) {
-                        FileCard(name = mockFiles[index].first, isImage = false) {}
-                    } else {
-                        FileRow(
-                            name = mockFiles[index].first,
-                            subtitle = mockFiles[index].second,
-                            iconTint = mockFiles[index].third,
-                            isLoading = false
+                        FileCard(
+                            name = file.name,
+                            thumbnailUrl = file.thumbnailUrl,
+                            isImage = file.mimeType.startsWith("image/")
                         ) {}
+                    } else {
+                        val subtitle = buildString {
+                            append("Updated")
+                            file.updatedAt?.take(10)?.let {
+                                append(" • ")
+                                append(it)
+                            }
+                            append(" • ")
+                            append(formatBytes(file.sizeBytes))
+                        }
+
+                        FileRow(
+                            name = file.name,
+                            subtitle = subtitle,
+                            iconTint = if (file.isStarred) Color(0xFFF4B400) else Color(0xFF4285F4)
+                        ) {}
+                    }
+                }
+
+                if (visibleFolders.isEmpty() && visibleFiles.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = if (uiState.query.isBlank()) "No files yet" else "No results found",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (uiState.query.isBlank()) {
+                                    "Upload files or create folders to see them here."
+                                } else {
+                                    "Try a different search query."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FilledTonalButton(onClick = { viewModel.refresh() }) {
+                                Text("Refresh")
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    
+
     if (showCreateSheet) {
         CreateNewBottomSheet(
             sheetState = sheetState,
@@ -232,4 +342,14 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
         isOpen = showAppDrawer,
         onClose = { showAppDrawer = false }
     )
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "%.1f KB".format(kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return "%.1f MB".format(mb)
+    val gb = mb / 1024.0
+    return "%.2f GB".format(gb)
 }

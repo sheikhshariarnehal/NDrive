@@ -22,6 +22,7 @@ import com.ndrive.cloudvault.presentation.home.FilesScreen
 import com.ndrive.cloudvault.presentation.home.StarredScreen
 import com.ndrive.cloudvault.presentation.home.PhotosScreen
 import com.ndrive.cloudvault.presentation.profile.ProfileScreen
+import com.ndrive.cloudvault.presentation.search.SearchScreen
 import androidx.compose.material3.Scaffold
 import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
 
@@ -92,6 +93,14 @@ fun NDriveNavGraph(navController: NavHostController) {
         }
         composable("profile_route") {
             ProfileScreen(navController)
+        }
+        composable("search",
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+            popExitTransition = { fadeOut(animationSpec = tween(200)) }
+        ) {
+            SearchScreen(navController)
         }
     }
 }

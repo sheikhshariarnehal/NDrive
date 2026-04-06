@@ -1,2 +1,7 @@
 package com.ndrive.cloudvault.domain.repository
-interface FileRepository { }
+
+import com.ndrive.cloudvault.domain.model.DriveFile
+
+interface FileRepository {
+	suspend fun getRecentFiles(limit: Int = 50): Result<List<DriveFile>>
+}

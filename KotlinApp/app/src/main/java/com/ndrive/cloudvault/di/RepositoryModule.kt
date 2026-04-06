@@ -1,7 +1,25 @@
 package com.ndrive.cloudvault.di
+
+import com.ndrive.cloudvault.data.repository.FileRepositoryImpl
+import com.ndrive.cloudvault.data.repository.FolderRepositoryImpl
+import com.ndrive.cloudvault.domain.repository.FileRepository
+import com.ndrive.cloudvault.domain.repository.FolderRepository
+import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule { }
+abstract class RepositoryModule {
+
+	@Binds
+	abstract fun bindFileRepository(
+		impl: FileRepositoryImpl
+	): FileRepository
+
+	@Binds
+	abstract fun bindFolderRepository(
+		impl: FolderRepositoryImpl
+	): FolderRepository
+}
