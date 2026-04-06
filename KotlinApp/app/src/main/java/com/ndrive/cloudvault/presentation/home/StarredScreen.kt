@@ -43,9 +43,9 @@ fun StarredScreen(navController: NavController) {
     var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     
-    val backgroundColor = Color(0xFFF8F9FA)
-    val searchBarColor = Color(0xFFEDF2FA)
-    val avatarColor = Color(0xFF4C6A9B)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
+    val avatarColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1200)
@@ -68,13 +68,13 @@ fun StarredScreen(navController: NavController) {
                     onProfileClick = { navController.navigate("profile_route") }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
             }
         },
         floatingActionButton = {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFFE8F0FE),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 8.dp)
@@ -84,11 +84,11 @@ fun StarredScreen(navController: NavController) {
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "New", tint = Color(0xFF1F1F1F))
+                    Icon(Icons.Default.Add, contentDescription = "New", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "New",
-                        color = Color(0xFF1F1F1F),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp
                     )
@@ -121,7 +121,7 @@ fun StarredScreen(navController: NavController) {
                         "Starred files",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     GridListToggle(isGridView = isGridView, onToggle = { isGridView = !isGridView })
                 }

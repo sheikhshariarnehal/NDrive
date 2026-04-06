@@ -52,10 +52,10 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
     var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    val backgroundColor = Color(0xFFF8F9FA) // Light grey background like Google Drive
-    val searchBarColor = Color(0xFFEDF2FA)
-    val avatarColor = Color(0xFF4C6A9B)
-    val primaryColor = Color(0xFF0B57D0)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
+    val avatarColor = MaterialTheme.colorScheme.primary
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1200)
@@ -97,7 +97,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     selectedTabIndex = selectedTabIndex,
                     containerColor = backgroundColor,
                     contentColor = primaryColor,
-                    divider = { HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0)) },
+                    divider = { HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant) },
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
@@ -115,7 +115,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                             Text(
                                 "Suggested",
                                 fontWeight = if (selectedTabIndex == 0) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selectedTabIndex == 0) primaryColor else Color.DarkGray
+                                color = if (selectedTabIndex == 0) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     )
@@ -126,7 +126,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                             Text(
                                 "Activity",
                                 fontWeight = if (selectedTabIndex == 1) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selectedTabIndex == 1) primaryColor else Color.DarkGray
+                                color = if (selectedTabIndex == 1) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     )
@@ -137,7 +137,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
             // Updated '+ New' FAB matching Google Drive shadow & color
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFFE8F0FE),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shadowElevation = 4.dp, // Soft shadow
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 8.dp)
@@ -147,11 +147,11 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "New", tint = Color(0xFF1F1F1F))
+                    Icon(Icons.Default.Add, contentDescription = "New", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "New",
-                        color = Color(0xFF1F1F1F),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp
                     )
@@ -184,7 +184,7 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
                         "Files",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     GridListToggle(isGridView = isGridView, onToggle = { isGridView = !isGridView })
                 }

@@ -75,9 +75,9 @@ fun PhotosScreen(navController: NavController) {
     var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    val backgroundColor = Color(0xFFF8F9FA)
-    val searchBarColor = Color(0xFFEDF2FA)
-    val avatarColor = Color(0xFF4C6A9B)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
+    val avatarColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1200)
@@ -104,7 +104,7 @@ fun PhotosScreen(navController: NavController) {
         floatingActionButton = {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFFE8F0FE),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 8.dp)
@@ -114,11 +114,11 @@ fun PhotosScreen(navController: NavController) {
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "New", tint = Color(0xFF1F1F1F))
+                    Icon(Icons.Default.Add, contentDescription = "New", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "New",
-                        color = Color(0xFF1F1F1F),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp
                     )
@@ -151,7 +151,7 @@ fun PhotosScreen(navController: NavController) {
                         "AUGUST", // example Month header
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray, letterSpacing = 1.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp
                     )
                     GridListToggle(isGridView = isGridView, onToggle = { isGridView = !isGridView })
                 }
@@ -192,7 +192,7 @@ fun PhotosScreen(navController: NavController) {
                         "JULY",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp,
                         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )

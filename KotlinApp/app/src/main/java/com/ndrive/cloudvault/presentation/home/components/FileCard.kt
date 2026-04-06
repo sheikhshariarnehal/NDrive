@@ -53,13 +53,14 @@ fun FileCard(
                 Icon(
                     imageVector = if (isImage) Icons.Default.Image else Icons.Default.InsertDriveFile,
                     contentDescription = null,
-                    tint = if (isImage) Color(0xFFE53935) else Color(0xFF757575),
+                    tint = if (isImage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)

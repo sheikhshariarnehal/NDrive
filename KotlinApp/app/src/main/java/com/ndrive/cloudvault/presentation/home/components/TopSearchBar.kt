@@ -25,8 +25,8 @@ fun TopSearchBar(
     onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val searchBarColor = Color(0xFFEDF2FA)
-    val avatarColor = Color(0xFF4C6A9B)
+    val searchBarColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+    val avatarColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
 
     Surface(
         shape = CircleShape,
@@ -40,17 +40,17 @@ fun TopSearchBar(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.DarkGray)
+                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
             Text(
                 text = "Search in Drive",
                 fontSize = 16.sp,
-                color = Color.DarkGray,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             Box {
@@ -63,7 +63,7 @@ fun TopSearchBar(
                         .clickable(onClick = onProfileClick)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("R", color = Color.White, fontWeight = FontWeight.Medium)
+                        Text("R", color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Medium)
                     }
                 }
             }
