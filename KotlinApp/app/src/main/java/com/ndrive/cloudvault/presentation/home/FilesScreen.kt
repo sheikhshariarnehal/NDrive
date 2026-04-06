@@ -104,7 +104,7 @@ fun FilesScreen(navController: androidx.navigation.NavController) {
                         onClick = { selectedTabIndex = 1 },
                         text = {
                             Text(
-                                "Computers",
+                                "Shared",
                                 fontWeight = if (selectedTabIndex == 1) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (selectedTabIndex == 1) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
