@@ -1,4 +1,4 @@
-﻿package com.ndrive.cloudvault.presentation.home
+package com.ndrive.cloudvault.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -255,8 +255,8 @@ fun HomeScreen(
                     items(visibleFolders.size) { index ->
                         val folder = visibleFolders[index]
                         if (isGridView) {
-                            FileCard(name = folder.name, isImage = false) {}
-                        } else {
+                              com.ndrive.cloudvault.presentation.home.components.FolderGridCard(name = folder.name) {}
+                          } else {
                             val subtitle = "Modified " + (folder.updatedAt?.take(10) ?: "Unknown")
                             val folderTint = when (folder.color?.lowercase()) {
                                 "red" -> Color(0xFFEA4335)
@@ -295,7 +295,7 @@ fun HomeScreen(
                         ) {}
                     } else {
                         val subtitle = buildString {
-                            if (file.isStarred) append("★ ")
+                            if (file.isStarred) append("? ")
                             append("Modified ")
                             append(file.updatedAt?.take(10) ?: "Unknown")
                         }
@@ -377,3 +377,4 @@ private fun formatBytes(bytes: Long): String {
     val gb = mb / 1024.0
     return "%.2f GB".format(gb)
 }
+

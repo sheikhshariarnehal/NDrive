@@ -178,7 +178,7 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                     items(uiState.folders.size) { index ->
                         val folder = uiState.folders[index]
                         if (isGridView) {
-                            FileCard(name = folder.name, isImage = false) {}
+                            com.ndrive.cloudvault.presentation.home.components.FolderGridCard(name = folder.name) {}
                         } else {
                             FolderCard(
                                 name = folder.name,
@@ -225,6 +225,7 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
 }
 
 class FileMock(val name: String, val subtitle: String, val tint: Color, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+
 
 
 
