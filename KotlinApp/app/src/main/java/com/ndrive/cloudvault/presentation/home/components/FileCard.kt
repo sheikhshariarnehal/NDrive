@@ -52,8 +52,13 @@ fun FileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailUrl != null) {
+                    val finalUrl = if (thumbnailUrl.startsWith("http") || thumbnailUrl.startsWith("data:")) {
+                        thumbnailUrl
+                    } else {
+                        "https://pub-99b846451dcc4c879db177b7e8b60c2f.r2.dev/$thumbnailUrl"
+                    }
                     AsyncImage(
-                        model = thumbnailUrl,
+                        model = finalUrl,
                         contentDescription = name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
