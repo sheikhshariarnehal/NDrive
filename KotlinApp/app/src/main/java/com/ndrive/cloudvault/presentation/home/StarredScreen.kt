@@ -44,8 +44,6 @@ fun StarredScreen(navController: NavController) {
     val sheetState = rememberModalBottomSheetState()
     
     val backgroundColor = MaterialTheme.colorScheme.background
-    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
-    val avatarColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1200)

@@ -19,6 +19,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.OndemandVideo
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -232,17 +240,16 @@ fun HomeScreen(
                 }
             } else {
                 if (visibleFolders.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            text = "Folders",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(
-                                horizontal = if (isGridView) 0.dp else 16.dp,
-                                vertical = 8.dp
+                    if (isGridView) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "Folders",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                        )
+                        }
                     }
 
                     items(visibleFolders.size) { index ->
@@ -250,23 +257,31 @@ fun HomeScreen(
                         if (isGridView) {
                             FileCard(name = folder.name, isImage = false) {}
                         } else {
-                            FolderCard(name = folder.name) {}
+                            val subtitle = "Modified " + (folder.updatedAt?.take(10) ?: "Unknown")
+                            val folderTint = when (folder.color?.lowercase()) {
+                                "red" -> Color(0xFFEA4335)
+                                "yellow", "orange" -> Color(0xFFFBBC04)
+                                "blue" -> Color(0xFF4285F4)
+                                "green" -> Color(0xFF34A853)
+                                "dark", "gray", "darkgray" -> Color(0xFF5F6368)
+                                else -> if (index % 3 == 0) Color(0xFFFBBC04) else if (index % 3 == 1) Color(0xFFEA4335) else Color(0xFF5F6368) // fallback to rotate colors if no color is specified, mimicking the screenshot loosely, actually let's just make it dark gray default if null
+                            }
+                            FolderCard(name = folder.name, subtitle = subtitle, iconTint = folder.color?.let { folderTint } ?: Color(0xFF5F6368)) {}
                         }
                     }
                 }
 
                 if (visibleFiles.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            text = "Files",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(
-                                horizontal = if (isGridView) 0.dp else 16.dp,
-                                vertical = 8.dp
+                    if (isGridView) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "Files",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                        )
+                        }
                     }
                 }
 
@@ -280,19 +295,28 @@ fun HomeScreen(
                         ) {}
                     } else {
                         val subtitle = buildString {
-                            append("Updated")
-                            file.updatedAt?.take(10)?.let {
-                                append(" • ")
-                                append(it)
-                            }
-                            append(" • ")
-                            append(formatBytes(file.sizeBytes))
+                            if (file.isStarred) append("★ ")
+                            append("Modified ")
+                            append(file.updatedAt?.take(10) ?: "Unknown")
+                        }
+
+                        val mimeParts = file.mimeType.lowercase()
+                        val (iconVector, tint) = when {
+                            mimeParts.contains("image") -> androidx.compose.material.icons.Icons.Default.Image to Color(0xFFEA4335)
+                            mimeParts.contains("video") -> androidx.compose.material.icons.Icons.Default.OndemandVideo to Color(0xFFEA4335)
+                            mimeParts.contains("audio") -> androidx.compose.material.icons.Icons.Default.LibraryMusic to Color(0xFFEA4335)
+                            mimeParts.contains("pdf") -> androidx.compose.material.icons.Icons.Default.PictureAsPdf to Color(0xFFEA4335) // Red pdf
+                            mimeParts.contains("sheet") || mimeParts.contains("excel") || mimeParts.contains("csv") -> androidx.compose.material.icons.Icons.Default.TableChart to Color(0xFF34A853) // Green Sheets
+                            mimeParts.contains("android") || mimeParts.contains("apk") -> androidx.compose.material.icons.Icons.Default.Android to Color(0xFF34A853) // Green APK
+                            mimeParts.contains("presentation") || mimeParts.contains("powerpoint") -> androidx.compose.material.icons.Icons.Default.Slideshow to Color(0xFFFBBC04) // Yellow slides
+                            else -> androidx.compose.material.icons.Icons.Default.Description to Color(0xFF4285F4) // Blue doc
                         }
 
                         FileRow(
                             name = file.name,
                             subtitle = subtitle,
-                            iconTint = if (file.isStarred) Color(0xFFF4B400) else Color(0xFF4285F4)
+                            iconTint = tint,
+                            iconVector = iconVector
                         ) {}
                     }
                 }

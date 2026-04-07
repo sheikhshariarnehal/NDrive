@@ -4,12 +4,12 @@ import com.ndrive.cloudvault.domain.model.DriveFile
 import com.ndrive.cloudvault.domain.repository.FileRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 @Singleton
 class FileRepositoryImpl @Inject constructor(
@@ -19,7 +19,18 @@ class FileRepositoryImpl @Inject constructor(
 	override suspend fun getRecentFiles(limit: Int): Result<List<DriveFile>> = runCatching {
 		supabaseClient
 			.from("files")
-			.select {
+			.select(
+				Columns.list(
+					"id",
+					"name",
+					"mime_type",
+					"size_bytes",
+					"folder_id",
+					"updated_at",
+					"is_starred",
+					"thumbnail_url"
+				)
+			) {
 				filter {
 					eq("is_trashed", false)
 				}
@@ -42,7 +53,6 @@ class FileRepositoryImpl @Inject constructor(
 	}
 
 	@Serializable
-	@JsonIgnoreUnknownKeys
 	private data class FileRow(
 		val id: String,
 		val name: String,

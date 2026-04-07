@@ -40,7 +40,6 @@ import androidx.compose.ui.text.input.ImeAction
 fun ActiveSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val focusRequester = remember { FocusRequester() }

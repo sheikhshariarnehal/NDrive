@@ -47,8 +47,6 @@ fun FilesScreen(navController: androidx.navigation.NavController) {
     val sheetState = rememberModalBottomSheetState()
     
     val backgroundColor = MaterialTheme.colorScheme.background
-    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
-    val avatarColor = MaterialTheme.colorScheme.primary
     val primaryColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {

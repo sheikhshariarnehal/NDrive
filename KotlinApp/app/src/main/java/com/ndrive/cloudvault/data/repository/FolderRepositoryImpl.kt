@@ -4,6 +4,7 @@ import com.ndrive.cloudvault.domain.model.DriveFolder
 import com.ndrive.cloudvault.domain.repository.FolderRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.postgrest.query.Order
 import javax.inject.Inject
@@ -19,7 +20,15 @@ class FolderRepositoryImpl @Inject constructor(
 	override suspend fun getRootFolders(limit: Int): Result<List<DriveFolder>> = runCatching {
 		supabaseClient
 			.from("folders")
-			.select {
+			.select(
+				Columns.list(
+					"id",
+					"name",
+					"parent_id",
+					"updated_at",
+					"color"
+				)
+			) {
 				filter {
 					filter("parent_id", FilterOperator.IS, "null")
 					eq("is_trashed", false)

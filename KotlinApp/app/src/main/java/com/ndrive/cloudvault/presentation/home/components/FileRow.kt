@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ndrive.cloudvault.presentation.common.shimmerEffect
 
 @Composable
@@ -20,6 +21,7 @@ fun FileRow(
     subtitle: String,
     isLoading: Boolean = false,
     iconTint: Color = Color(0xFF4285F4),
+    iconVector: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Description,
     onClick: () -> Unit
 ) {
     if (isLoading) {
@@ -37,14 +39,14 @@ fun FileRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Description,
+            imageVector = iconVector,
             contentDescription = null,
             tint = iconTint,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(32.dp)
         )
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -52,7 +54,7 @@ fun FileRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -61,7 +63,7 @@ fun FileRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -69,7 +71,7 @@ fun FileRow(
             }
         }
 
-        IconButton(onClick = { /* Menu */ }) {
+        IconButton(onClick = { /* Menu */ }, modifier = Modifier.size(24.dp)) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "More",

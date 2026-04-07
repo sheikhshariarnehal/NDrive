@@ -36,7 +36,7 @@ import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 import kotlinx.coroutines.delay
 
 @Composable
-fun PhotoThumbnail(url: String, isLoading: Boolean = false) {
+fun PhotoThumbnail(isLoading: Boolean = false) {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
@@ -76,8 +76,6 @@ fun PhotosScreen(navController: NavController) {
     val sheetState = rememberModalBottomSheetState()
 
     val backgroundColor = MaterialTheme.colorScheme.background
-    val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
-    val avatarColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1200)
@@ -159,7 +157,7 @@ fun PhotosScreen(navController: NavController) {
 
             if (isLoading) {
                 items(12) {
-                    if (isGridView) PhotoThumbnail(url = "", isLoading = true)
+                    if (isGridView) PhotoThumbnail(isLoading = true)
                     else {
                         Box(
                             modifier = Modifier
@@ -175,7 +173,7 @@ fun PhotosScreen(navController: NavController) {
                 val section1Count = 6
                 items(section1Count) { index ->
                     if (isGridView) {
-                        PhotoThumbnail(url = "mock$index") 
+                        PhotoThumbnail() 
                     } else {
                         FileRow(
                             name = "IMG_000$index.jpg",
