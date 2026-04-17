@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
 import com.ndrive.cloudvault.presentation.home.components.TopSearchBar
 import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun PhotoThumbnail(isLoading: Boolean = false) {
@@ -70,10 +73,13 @@ fun PhotoThumbnail(isLoading: Boolean = false) {
 fun PhotosScreen(navController: NavController) {
     var isGridView by remember { mutableStateOf(true) } // Photos usually default to grid
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     var showCreateSheet by remember { mutableStateOf(false) }
     var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+    val pullRefreshState = rememberPullToRefreshState()
 
     val backgroundColor = MaterialTheme.colorScheme.background
 
@@ -125,6 +131,22 @@ fun PhotosScreen(navController: NavController) {
         },
         bottomBar = { NDriveBottomNav(navController) }
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    isLoading = true
+                    delay(1200)
+                    isLoading = false
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
         LazyVerticalGrid(
             columns = if (isGridView) GridCells.Fixed(3) else GridCells.Fixed(1), 
             contentPadding = PaddingValues(
@@ -218,6 +240,7 @@ fun PhotosScreen(navController: NavController) {
                 }
             }
         }
+        } // end PullToRefreshBox
     }
     
     if (showCreateSheet) {
@@ -228,6 +251,11 @@ fun PhotosScreen(navController: NavController) {
     }
     AppDrawer(
         isOpen = showAppDrawer,
-        onClose = { showAppDrawer = false }
+        onClose = { showAppDrawer = false },
+        onMenuItemClick = { itemLabel ->
+            if (itemLabel == "Uploads") {
+                navController.navigate("uploads")
+            }
+        },
     )
 }

@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -144,17 +146,33 @@ fun StarredScreen(
         }
     ) { paddingValues ->
         if (showAppDrawer) {
-            AppDrawer(isOpen = showAppDrawer, onClose = { showAppDrawer = false })
+            AppDrawer(
+                isOpen = showAppDrawer,
+                onClose = { showAppDrawer = false },
+                onMenuItemClick = { itemLabel ->
+                    if (itemLabel == "Uploads") {
+                        navController.navigate("uploads")
+                    }
+                },
+            )
         }
 
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(if (isGridView) 2 else 1),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
+        val pullRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = { viewModel.refresh() },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+        ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(if (isGridView) 2 else 1),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
                 if (uiState.isLoading) {
                     items(8) {
                         if (isGridView) FileCard(name = "", isLoading = true) {}
@@ -216,7 +234,7 @@ fun StarredScreen(
                     }
                 }
             }
-        }
+        } // end PullToRefreshBox
     }
 
     if (showCreateSheet) {

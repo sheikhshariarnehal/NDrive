@@ -37,6 +37,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,15 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
 import com.ndrive.cloudvault.BuildConfig
->>>>>>> Stashed changes
-import com.ndrive.cloudvault.domain.model.UploadState
-=======
-import com.ndrive.cloudvault.BuildConfig
->>>>>>> Stashed changes
 import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
 import com.ndrive.cloudvault.presentation.home.components.FileCard
@@ -108,20 +102,6 @@ fun HomeScreen(
     val sheetState = rememberModalBottomSheetState()
     val uiState by viewModel.uiState.collectAsState()
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    val openDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { fileUri ->
-        if (fileUri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    fileUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-=======
-=======
->>>>>>> Stashed changes
     val navigateToPreview: (String) -> Unit = { fileId ->
         navController.navigate("preview/${Uri.encode(fileId)}")
     }
@@ -137,11 +117,6 @@ fun HomeScreen(
                         Intent.FLAG_GRANT_READ_URI_PERMISSION,
                     )
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-            }
-            viewModel.uploadFiles(fileUris)
-=======
             }
             viewModel.uploadFiles(fileUris)
         }
@@ -154,7 +129,6 @@ fun HomeScreen(
             bitmapToCacheUri(context, bitmap)?.let { cachedUri ->
                 viewModel.uploadFiles(listOf(cachedUri))
             }
->>>>>>> Stashed changes
         }
     }
 
@@ -255,13 +229,22 @@ fun HomeScreen(
         },
         bottomBar = { NDriveBottomNav(navController) },
     ) { padding ->
+        val pullRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = { viewModel.refresh() },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
         LazyVerticalGrid(
             columns = if (isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
             contentPadding = PaddingValues(
                 start = if (isGridView) 16.dp else 0.dp,
                 end = if (isGridView) 16.dp else 0.dp,
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 88.dp,
+                top = 0.dp,
+                bottom = 88.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
@@ -317,17 +300,9 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp),
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                        onDismiss = { viewModel.clearUploadState() }
-=======
                         onToggleExpanded = { viewModel.toggleUploadPanelExpanded() },
                         onDismissAll = { viewModel.clearUploadState() },
                         onDismissItem = { itemId -> viewModel.dismissUploadItem(itemId) },
->>>>>>> Stashed changes
-=======
-                        onDismiss = { viewModel.clearUploadState() },
->>>>>>> Stashed changes
                     )
                 }
             }
@@ -461,23 +436,13 @@ fun HomeScreen(
                 }
             }
         }
+        } // end PullToRefreshBox
     }
 
     if (showCreateSheet) {
         CreateNewBottomSheet(
             sheetState = sheetState,
             onDismissRequest = { showCreateSheet = false },
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            onUploadClick = {
-                showCreateSheet = false
-                openDocumentLauncher.launch(arrayOf("*/*"))
-            }
-=======
-            onFolderClick = { showCreateFolderDialog = true },
-            onUploadClick = { openDocumentsLauncher.launch(arrayOf("*/*")) },
-            onScanClick = { takePicturePreviewLauncher.launch(null) },
-=======
             onFolderClick = {
                 showCreateSheet = false
                 showCreateFolderDialog = true
@@ -490,7 +455,6 @@ fun HomeScreen(
                 showCreateSheet = false
                 takePicturePreviewLauncher.launch(null)
             },
->>>>>>> Stashed changes
         )
     }
 
@@ -520,16 +484,17 @@ fun HomeScreen(
                     Text("Cancel")
                 }
             },
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         )
     }
 
     AppDrawer(
         isOpen = showAppDrawer,
         onClose = { showAppDrawer = false },
+        onMenuItemClick = { itemLabel ->
+            if (itemLabel == "Uploads") {
+                navController.navigate("uploads")
+            }
+        },
     )
 }
 
@@ -550,5 +515,3 @@ private fun bitmapToCacheUri(context: Context, bitmap: Bitmap): Uri? {
         )
     }.getOrNull()
 }
-
-

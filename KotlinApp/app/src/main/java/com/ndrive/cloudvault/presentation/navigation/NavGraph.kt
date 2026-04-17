@@ -23,8 +23,7 @@ import com.ndrive.cloudvault.presentation.home.StarredScreen
 import com.ndrive.cloudvault.presentation.home.PhotosScreen
 import com.ndrive.cloudvault.presentation.profile.ProfileScreen
 import com.ndrive.cloudvault.presentation.search.SearchScreen
-import androidx.compose.material3.Scaffold
-import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
+import com.ndrive.cloudvault.presentation.upload.UploadsScreen
 
 @Composable
 fun NDriveNavGraph(navController: NavHostController) {
@@ -101,6 +100,15 @@ fun NDriveNavGraph(navController: NavHostController) {
             popExitTransition = { fadeOut(animationSpec = tween(200)) }
         ) {
             SearchScreen(navController)
+        }
+        composable(
+            "uploads",
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+            popExitTransition = { fadeOut(animationSpec = tween(200)) },
+        ) {
+            UploadsScreen(navController)
         }
     }
 }
