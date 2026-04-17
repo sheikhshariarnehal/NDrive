@@ -139,7 +139,27 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 
+	fun createFolder(name: String) {
+		val trimmedName = name.trim()
+		if (trimmedName.isBlank()) {
+			_uiState.update { it.copy(errorMessage = "Folder name cannot be empty") }
+			return
+		}
+
+		viewModelScope.launch {
+			_uiState.update { it.copy(errorMessage = null) }
+			folderRepository.createFolder(name = trimmedName, parentId = null)
+				.onSuccess { refresh() }
+				.onFailure { error ->
+					_uiState.update { current ->
+						current.copy(errorMessage = error.message ?: "Unable to create folder")
+					}
+				}
+		}
+	}
+
 	fun uploadFile(fileUri: Uri, folderId: String? = null) {
+<<<<<<< Updated upstream
 		uploadFiles(listOf(fileUri), folderId)
 	}
 
@@ -180,10 +200,43 @@ class HomeViewModel @Inject constructor(
 				val fileUri = uploadQueue[index]
 				var fileSuccess: UploadState.Success? = null
 				var fileError: UploadState.Error? = null
+=======
+		uploadFiles(fileUris = listOf(fileUri), folderId = folderId)
+	}
+
+	fun uploadFiles(fileUris: List<Uri>, folderId: String? = null) {
+		val queue = fileUris
+			.map { it.toString() to it }
+			.distinctBy { it.first }
+			.map { it.second }
+
+		if (queue.isEmpty()) {
+			return
+		}
+
+		val currentUploadState = _uiState.value.uploadState
+		if (currentUploadState is UploadState.InProgress) {
+			return
+		}
+
+		viewModelScope.launch {
+			_uiState.update { it.copy(errorMessage = null) }
+
+			val totalCount = queue.size
+			var completedCount = 0
+			var lastSuccess: UploadState.Success? = null
+			var uploadError: UploadState.Error? = null
+
+			for ((index, fileUri) in queue.withIndex()) {
+				if (uploadError != null) {
+					break
+				}
+>>>>>>> Stashed changes
 
 				uploadFileUseCase(fileUri = fileUri, folderId = folderId).collect { state ->
 					when (state) {
 						is UploadState.InProgress -> {
+<<<<<<< Updated upstream
 							updateUploadItem(
 								itemId = item.id,
 								status = UploadItemStatus.UPLOADING,
@@ -290,10 +343,60 @@ class HomeViewModel @Inject constructor(
 					val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
 					if (nameIndex >= 0) {
 						displayName = cursor.getString(nameIndex)
+=======
+							_uiState.update {
+								it.copy(
+									uploadState = state.toBatchProgress(
+										completedFiles = completedCount,
+										totalFiles = totalCount,
+									),
+									errorMessage = null,
+								)
+							}
+						}
+
+						is UploadState.Success -> {
+							completedCount += 1
+							lastSuccess = state
+
+							if (completedCount < totalCount) {
+								val progress = ((completedCount * 100.0) / totalCount)
+									.toInt()
+									.coerceIn(1, 99)
+
+								_uiState.update {
+									it.copy(
+										uploadState = UploadState.InProgress(
+											phase = UploadPhase.PREPARING,
+											progressPercent = progress,
+											uploadedBytes = 0,
+											totalBytes = 0,
+										),
+										errorMessage = null,
+									)
+								}
+							}
+						}
+
+						is UploadState.Error -> {
+							uploadError = if (totalCount > 1) {
+								state.copy(
+									message = "File ${index + 1}/$totalCount failed: ${state.message}",
+								)
+							} else {
+								state
+							}
+
+							_uiState.update { it.copy(uploadState = uploadError!!, errorMessage = null) }
+						}
+
+						UploadState.Idle -> Unit
+>>>>>>> Stashed changes
 					}
 				}
 			}
 
+<<<<<<< Updated upstream
 		return displayName?.takeIf { it.isNotBlank() } ?: fallbackName
 	}
 
@@ -303,7 +406,53 @@ class HomeViewModel @Inject constructor(
 			UploadPhase.CHUNKS -> "Uploading chunks"
 			UploadPhase.TELEGRAM -> "Uploading to Telegram"
 			UploadPhase.FINALIZING -> "Finalizing"
+=======
+			if (completedCount > 0) {
+				refresh()
+			}
+
+			if (uploadError != null) {
+				return@launch
+			}
+
+			val successLabel = if (totalCount == 1) {
+				lastSuccess?.fileName ?: "file"
+			} else {
+				"$completedCount files"
+			}
+
+			_uiState.update {
+				it.copy(
+					uploadState = UploadState.Success(
+						fileId = lastSuccess?.fileId ?: "batch",
+						fileName = successLabel,
+					),
+					errorMessage = null,
+				)
+			}
+
+			delay(1200)
+			_uiState.update { latest ->
+				if (latest.uploadState is UploadState.Success) {
+					latest.copy(uploadState = UploadState.Idle)
+				} else {
+					latest
+				}
+			}
+>>>>>>> Stashed changes
 		}
+	}
+
+	private fun UploadState.InProgress.toBatchProgress(
+		completedFiles: Int,
+		totalFiles: Int,
+	): UploadState.InProgress {
+		val safeTotal = totalFiles.coerceAtLeast(1)
+		val safeCurrentProgress = progressPercent.coerceIn(0, 100)
+		val aggregatePercent = (((completedFiles * 100) + safeCurrentProgress) / safeTotal)
+			.coerceIn(0, 99)
+
+		return copy(progressPercent = aggregatePercent)
 	}
 
 	fun filteredFolders(): List<DriveFolder> {

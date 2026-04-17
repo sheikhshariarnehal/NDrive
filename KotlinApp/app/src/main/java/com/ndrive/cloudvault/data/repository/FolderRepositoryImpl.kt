@@ -11,6 +11,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 @Singleton
 class FolderRepositoryImpl @Inject constructor(
@@ -38,15 +41,44 @@ class FolderRepositoryImpl @Inject constructor(
                         }
                         .decodeList<FolderRow>()
                         .map { row ->
-                                DriveFolder(
-                                        id = row.id,
-                                        name = row.name,
-                                        parentId = row.parentId,
-                                        updatedAt = row.updatedAt,
-                                        color = row.color,
-                                        isStarred = false
+                                row.toDomain()
+                        }
+        }
+
+        override suspend fun createFolder(name: String, parentId: String?): Result<DriveFolder> = runCatching {
+                val payload = buildJsonObject {
+                        put("name", name)
+                        if (parentId.isNullOrBlank()) put("parent_id", JsonNull) else put("parent_id", parentId)
+                        put("is_trashed", false)
+                        put("color", JsonNull)
+                }
+
+                supabaseClient
+                        .from("folders")
+                        .insert(payload) {
+                                select(
+                                        columns = Columns.list(
+                                                "id",
+                                                "name",
+                                                "parent_id",
+                                                "updated_at",
+                                                "color"
+                                        )
                                 )
                         }
+                        .decodeSingle<FolderRow>()
+                        .toDomain()
+        }
+
+        private fun FolderRow.toDomain(): DriveFolder {
+                return DriveFolder(
+                        id = id,
+                        name = name,
+                        parentId = parentId,
+                        updatedAt = updatedAt,
+                        color = color,
+                        isStarred = false
+                )
         }
 
         @Serializable
