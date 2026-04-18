@@ -33,9 +33,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 /**
  * Static Google-Drive-style search pill shown on the Home screen.
@@ -46,6 +48,8 @@ fun TopSearchBar(
     onMenuClick: () -> Unit,
     onProfileClick: () -> Unit,
     isTelegramConnected: Boolean = false,
+    profileAvatarUrl: String? = null,
+    profileInitial: String = "R",
     onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -141,12 +145,23 @@ fun TopSearchBar(
                         .clip(CircleShape)
                         .clickable(onClick = onProfileClick)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "R",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Medium
+                    if (!profileAvatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = profileAvatarUrl,
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
                         )
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = profileInitial,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }

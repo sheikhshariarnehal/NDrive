@@ -152,6 +152,8 @@ fun HomeScreen(
                     onMenuClick = { showAppDrawer = true },
                     onProfileClick = { navController.navigate("profile_route") },
                     isTelegramConnected = uiState.isTelegramConnected,
+                    profileAvatarUrl = uiState.profileAvatarUrl,
+                    profileInitial = uiState.profileInitial,
                     onSearchClick = { navController.navigate("search") },
                 )
 

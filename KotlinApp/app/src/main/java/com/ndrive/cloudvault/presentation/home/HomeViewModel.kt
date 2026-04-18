@@ -9,6 +9,7 @@ import com.ndrive.cloudvault.domain.model.DriveFile
 import com.ndrive.cloudvault.domain.model.DriveFolder
 import com.ndrive.cloudvault.domain.model.UploadPhase
 import com.ndrive.cloudvault.domain.model.UploadState
+import com.ndrive.cloudvault.domain.repository.AuthRepository
 import com.ndrive.cloudvault.domain.repository.FileRepository
 import com.ndrive.cloudvault.domain.repository.FolderRepository
 import com.ndrive.cloudvault.domain.repository.TelegramRepository
@@ -56,6 +57,8 @@ data class HomeUiState(
     val folders: List<DriveFolder> = emptyList(),
     val files: List<DriveFile> = emptyList(),
     val query: String = "",
+    val profileAvatarUrl: String? = null,
+    val profileInitial: String = "R",
     val isTelegramConnected: Boolean = false,
     val errorMessage: String? = null,
     val uploadPanel: UploadPanelState = UploadPanelState(),
@@ -65,6 +68,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
+    private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
     private val folderRepository: FolderRepository,
     private val telegramRepository: TelegramRepository,
@@ -96,6 +100,11 @@ class HomeViewModel @Inject constructor(
             val foldersDeferred = async { folderRepository.getRootFolders(limit = 20) }
             val filesDeferred = async { fileRepository.getRecentFiles(limit = 60) }
             val telegramStatusDeferred = async { telegramRepository.getStatus() }
+            val profile = authRepository.getCurrentAuthProfile()
+            val profileInitial = resolveProfileInitial(
+                displayName = profile?.displayName,
+                email = profile?.email,
+            )
 
             val folderResult = foldersDeferred.await()
             val fileResult = filesDeferred.await()
@@ -109,6 +118,8 @@ class HomeViewModel @Inject constructor(
                     isLoading = false,
                     folders = folderResult.getOrElse { emptyList() },
                     files = fileResult.getOrElse { emptyList() },
+                    profileAvatarUrl = profile?.avatarUrl,
+                    profileInitial = profileInitial,
                     isTelegramConnected = telegramStatusResult.getOrNull()?.connected ?: it.isTelegramConnected,
                     errorMessage = error,
                 )
@@ -319,6 +330,13 @@ class HomeViewModel @Inject constructor(
             UploadPhase.TELEGRAM -> "Uploading to Telegram"
             UploadPhase.FINALIZING -> "Finalizing"
         }
+    }
+
+    private fun resolveProfileInitial(displayName: String?, email: String?): String {
+        val source = displayName?.trim().takeIf { !it.isNullOrBlank() }
+            ?: email?.substringBefore("@")?.trim()
+        val firstChar = source?.firstOrNull { it.isLetterOrDigit() } ?: return "R"
+        return firstChar.uppercaseChar().toString()
     }
 
     companion object {
