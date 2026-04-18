@@ -23,7 +23,12 @@ router.delete(
     try {
       const storageType = (req.query.storage_type as string) || "bot";
       const userId = req.query.user_id as string | undefined;
-      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+      const { client } = await sessionManager.resolveClientAndChat(
+        storageType,
+        userId,
+        undefined,
+        { requireUserSession: storageType === "user" },
+      );
 
       await client.invoke({
         _: "deleteMessages",
@@ -46,6 +51,15 @@ router.delete(
 
       const errorMsg =
         err instanceof Error ? err.message : "Delete failed";
+
+      if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+        res.status(409).json({
+          error: "Telegram user session is not available",
+          code: "TELEGRAM_RECONNECT_REQUIRED",
+          message: "Please reconnect your Telegram account and try again.",
+        });
+        return;
+      }
 
       // Don't fail hard if message was already deleted
       if (
@@ -85,7 +99,12 @@ router.post("/cleanup", async (req: Request, res: Response) => {
   try {
     const storageType = (req.body.storage_type as string) || "bot";
     const userId = req.body.user_id as string | undefined;
-    const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+    const { client } = await sessionManager.resolveClientAndChat(
+      storageType,
+      userId,
+      undefined,
+      { requireUserSession: storageType === "user" },
+    );
 
     // TDLib deleteMessages supports up to 100 messages at once
     const batchSize = 100;
@@ -120,8 +139,19 @@ router.post("/cleanup", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[Cleanup] Error:", err);
+
+    const errorMsg = err instanceof Error ? err.message : "Cleanup failed";
+    if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+      res.status(409).json({
+        error: "Telegram user session is not available",
+        code: "TELEGRAM_RECONNECT_REQUIRED",
+        message: "Please reconnect your Telegram account and try again.",
+      });
+      return;
+    }
+
     res.status(500).json({
-      error: err instanceof Error ? err.message : "Cleanup failed",
+      error: errorMsg,
     });
   }
 });

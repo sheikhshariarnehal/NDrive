@@ -89,7 +89,12 @@ router.get(
     try {
       const storageType = (req.query.storage_type as string) || "bot";
       const userId = req.query.user_id as string | undefined;
-      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+      const { client } = await sessionManager.resolveClientAndChat(
+        storageType,
+        userId,
+        undefined,
+        { requireUserSession: storageType === "user" },
+      );
       const remoteFile = await client.invoke({
         _: "getRemoteFile",
         remote_file_id: remoteFileId,
@@ -129,8 +134,19 @@ router.get(
       }
     } catch (err) {
       console.error("[Thumbnail] Error:", err);
+
+      const errorMsg = err instanceof Error ? err.message : "Thumbnail fetch failed";
+      if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+        res.status(409).json({
+          error: "Telegram user session is not available",
+          code: "TELEGRAM_RECONNECT_REQUIRED",
+          message: "Please reconnect your Telegram account and try again.",
+        });
+        return;
+      }
+
       res.status(500).json({
-        error: err instanceof Error ? err.message : "Thumbnail fetch failed",
+        error: errorMsg,
       });
     }
   }
@@ -161,7 +177,12 @@ router.post("/from-message", async (req: Request, res: Response) => {
   try {
     const storageType = (req.body.storage_type as string) || "bot";
     const userId = req.body.user_id as string | undefined;
-    const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+    const { client } = await sessionManager.resolveClientAndChat(
+      storageType,
+      userId,
+      undefined,
+      { requireUserSession: storageType === "user" },
+    );
 
     const message = await client.invoke({
       _: "getMessage",
@@ -232,8 +253,19 @@ router.post("/from-message", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[Thumbnail from-message] Error:", err);
+
+    const errorMsg = err instanceof Error ? err.message : "Thumbnail fetch failed";
+    if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+      res.status(409).json({
+        error: "Telegram user session is not available",
+        code: "TELEGRAM_RECONNECT_REQUIRED",
+        message: "Please reconnect your Telegram account and try again.",
+      });
+      return;
+    }
+
     res.status(500).json({
-      error: err instanceof Error ? err.message : "Thumbnail fetch failed",
+      error: errorMsg,
     });
   }
 });

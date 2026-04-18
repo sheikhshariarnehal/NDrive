@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { sessionManager } from "../session-manager.js";
 import { streamFileToResponse, streamFileProgressively } from "../utils/stream.js";
+import { extractFileInfo } from "../utils/upload-helpers.js";
 
 const router = Router();
 
@@ -407,6 +408,59 @@ function getBotToken(): string {
   return process.env.TELEGRAM_BOT_TOKEN || "";
 }
 
+function getTdlibMessageIdCandidates(messageId: number): number[] {
+  const ids = new Set<number>();
+
+  if (messageId > 0) ids.add(messageId);
+
+  if (messageId > 1048576) {
+    ids.add(Math.floor(messageId / 1048576));
+  } else if (messageId > 0) {
+    ids.add(messageId * 1048576);
+  }
+
+  return [...ids].filter((id) => Number.isFinite(id) && id > 0);
+}
+
+async function refreshViaTdlibMessage(
+  client: any,
+  chatId: number,
+  tdlibMessageId: number,
+): Promise<{ freshRemoteFileId: string; freshTdlibFileId: number } | null> {
+  const candidates = getTdlibMessageIdCandidates(tdlibMessageId);
+
+  for (const candidateId of candidates) {
+    try {
+      const message = await client.invoke({
+        _: "getMessage",
+        chat_id: chatId,
+        message_id: candidateId,
+      });
+
+      const fileInfo = extractFileInfo(message);
+      if (!fileInfo?.remoteFileId || !fileInfo.tdlibFileId) {
+        console.warn(`[Download][MessageRefresh] No file payload in message ${candidateId}`);
+        continue;
+      }
+
+      console.log(
+        `[Download][MessageRefresh] Refreshed file from msg ${candidateId}: remote=${fileInfo.remoteFileId.substring(0, 24)}... tdlib=${fileInfo.tdlibFileId}`,
+      );
+      return {
+        freshRemoteFileId: fileInfo.remoteFileId,
+        freshTdlibFileId: fileInfo.tdlibFileId,
+      };
+    } catch (err) {
+      console.warn(
+        `[Download][MessageRefresh] getMessage failed for msg ${candidateId}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  return null;
+}
+
 /**
  * Fallback: download a file via the Bot HTTP API.
  * Works for files up to 20 MB.  Returns the local path on success or null.
@@ -458,7 +512,6 @@ async function downloadViaBotApi(remoteFileId: string): Promise<string | null> {
  */
 async function refreshViaForward(
   tdlibMessageId: number,
-  targetRemoteId: string,
 ): Promise<{ freshFileId: string; localPath: string } | null> {
   const token = getBotToken();
   const channelId = getChannelId();
@@ -570,8 +623,9 @@ async function refreshViaForward(
  *   1. Check TDLib local cache
  *   2. TDLib synchronous downloadFile
  *   3. Clear stale TDLib state + retry
- *   4. Refresh file reference via forwardMessage + Bot API fallback
- *   5. Bot HTTP API fallback (≤ 20 MB files)
+ *   4. Refresh via TDLib getMessage using stored message_id
+ *   5. (Bot storage only) Refresh via forwardMessage + Bot API
+ *   6. (Bot storage only) Direct Bot HTTP API fallback (≤ 20 MB files)
  */
 router.get(
   "/:remoteFileId",
@@ -625,7 +679,12 @@ router.get(
     }
 
     try {
-      const { client } = await sessionManager.resolveClientAndChat(storageType, userId);
+      const { client, chatId, actualStorageType } = await sessionManager.resolveClientAndChat(
+        storageType,
+        userId,
+        undefined,
+        { requireUserSession: storageType === "user" },
+      );
 
       // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -810,11 +869,34 @@ router.get(
         return;
       }
 
-      // ─── 4.5. Refresh file reference via channel message forward ──
-      //     (Only for photo file_ids whose references expire)
+      // ─── 4.5. Refresh using TDLib getMessage + new file reference ──
       if (messageId) {
+        console.log(`[Download] Refreshing via TDLib getMessage (tdlib_msg_id=${messageId})...`);
+        const refreshed = await refreshViaTdlibMessage(client, chatId, messageId);
+        if (refreshed) {
+          localPath = await tryDownloadSync(refreshed.freshTdlibFileId);
+          if (!localPath) {
+            await clearState(refreshed.freshTdlibFileId);
+            localPath = await tryDownloadSync(refreshed.freshTdlibFileId);
+          }
+
+          if (localPath) {
+            try { fileSizeHint = fs.statSync(localPath).size; } catch {}
+            cacheFile(remoteFileId, localPath);
+            if (refreshed.freshRemoteFileId !== remoteFileId) {
+              cacheFile(refreshed.freshRemoteFileId, localPath);
+            }
+            logDownloadMetric(200, "tdlib-message-refresh");
+            streamFileToResponse(localPath, res, streamOpts);
+            return;
+          }
+        }
+      }
+
+      // ─── 5. Bot-only recovery: refresh via forwardMessage ───────────
+      if (actualStorageType === "bot" && messageId) {
         console.log(`[Download] Refreshing via forwardMessage (tdlib_msg_id=${messageId})...`);
-        const result = await refreshViaForward(messageId, remoteFileId);
+        const result = await refreshViaForward(messageId);
         if (result) {
           try { fileSizeHint = fs.statSync(result.localPath).size; } catch {}
           cacheFile(remoteFileId, result.localPath);
@@ -825,16 +907,18 @@ router.get(
         }
       }
 
-      // ─── 5. Fallback: download via Bot HTTP API (≤ 20 MB) ────────
-      console.log(`[Download] TDLib recovery failed, trying Bot HTTP API fallback...`);
-      const botApiPath = await downloadViaBotApi(remoteFileId);
-      if (botApiPath) {
-        try { fileSizeHint = fs.statSync(botApiPath).size; } catch {}
-        cacheFile(remoteFileId, botApiPath);
-        logDownloadMetric(200, "bot-api-fallback");
-        streamFileToResponse(botApiPath, res, streamOpts);
-        // File is now cached — don't delete it
-        return;
+      // ─── 6. Bot-only fallback: download via Bot HTTP API (≤ 20 MB) ─
+      if (actualStorageType === "bot") {
+        console.log(`[Download] TDLib recovery failed, trying Bot HTTP API fallback...`);
+        const botApiPath = await downloadViaBotApi(remoteFileId);
+        if (botApiPath) {
+          try { fileSizeHint = fs.statSync(botApiPath).size; } catch {}
+          cacheFile(remoteFileId, botApiPath);
+          logDownloadMetric(200, "bot-api-fallback");
+          streamFileToResponse(botApiPath, res, streamOpts);
+          // File is now cached — don't delete it
+          return;
+        }
       }
 
       // ─── 6. All attempts exhausted ────────────────────────────────
@@ -845,6 +929,16 @@ router.get(
       console.error("[Download] Error:", err);
 
       const errorMsg = err instanceof Error ? err.message : "Download failed";
+
+      if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+        logDownloadMetric(409, "telegram-reconnect-required", errorMsg);
+        res.status(409).json({
+          error: "Telegram user session is not available",
+          code: "TELEGRAM_RECONNECT_REQUIRED",
+          message: "Please reconnect your Telegram account and try again.",
+        });
+        return;
+      }
 
       if (errorMsg.includes("Wrong remote file identifier")) {
         logDownloadMetric(404, "invalid-remote-file-id", errorMsg);
@@ -998,7 +1092,12 @@ router.get(
     try {
       const storageTypeStatus = (req.query.storage_type as string) || "bot";
       const userIdStatus = req.query.user_id as string | undefined;
-      const { client } = await sessionManager.resolveClientAndChat(storageTypeStatus, userIdStatus);
+      const { client } = await sessionManager.resolveClientAndChat(
+        storageTypeStatus,
+        userIdStatus,
+        undefined,
+        { requireUserSession: storageTypeStatus === "user" },
+      );
 
       const remoteFile = await client.invoke({
         _: "getRemoteFile",
@@ -1024,8 +1123,19 @@ router.get(
       });
     } catch (err) {
       console.error("[Download Status] Error:", err);
+
+      const errorMsg = err instanceof Error ? err.message : "Status check failed";
+      if (errorMsg.startsWith("USER_SESSION_REQUIRED:")) {
+        res.status(409).json({
+          error: "Telegram user session is not available",
+          code: "TELEGRAM_RECONNECT_REQUIRED",
+          message: "Please reconnect your Telegram account and try again.",
+        });
+        return;
+      }
+
       res.status(500).json({
-        error: err instanceof Error ? err.message : "Status check failed",
+        error: errorMsg,
       });
     }
   }

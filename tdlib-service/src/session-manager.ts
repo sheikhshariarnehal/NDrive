@@ -768,8 +768,25 @@ class SessionManager {
     storageType: string,
     userId?: string,
     telegramChatId?: number | null,
+    options?: { requireUserSession?: boolean },
   ): Promise<{ client: TDLibClient; chatId: number; actualStorageType: string; sessionExpired?: boolean }> {
-    if (storageType === "user" && userId) {
+    const requireUserSession = options?.requireUserSession === true;
+
+    if (storageType === "user") {
+      if (!userId) {
+        if (requireUserSession) {
+          throw new Error("USER_SESSION_REQUIRED: Missing user_id for user storage request");
+        }
+
+        console.warn("[SessionManager] Missing user_id for user storage request, falling back to bot channel");
+        const client = this.getBotClient();
+        const chatId = parseInt(process.env.TELEGRAM_CHANNEL_ID || "0", 10);
+        if (!chatId) {
+          throw new Error("TELEGRAM_CHANNEL_ID not configured");
+        }
+        return { client, chatId, actualStorageType: "bot", sessionExpired: true };
+      }
+
       try {
         const session = await this.getSession(userId);
         const chatId = telegramChatId || session.savedMessagesChatId;
@@ -778,8 +795,14 @@ class SessionManager {
         }
         return { client: session.client, chatId, actualStorageType: "user" };
       } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+
+        if (requireUserSession) {
+          throw new Error(`USER_SESSION_REQUIRED: ${reason}`);
+        }
+
         console.warn(
-          `[SessionManager] User ${userId} session unavailable (${err instanceof Error ? err.message : err}), falling back to bot channel`,
+          `[SessionManager] User ${userId} session unavailable (${reason}), falling back to bot channel`,
         );
         // fall through to bot — flag that user session expired
         const client = this.getBotClient();
