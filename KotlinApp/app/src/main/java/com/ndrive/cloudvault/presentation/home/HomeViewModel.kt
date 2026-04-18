@@ -56,6 +56,7 @@ data class HomeUiState(
     val folders: List<DriveFolder> = emptyList(),
     val files: List<DriveFile> = emptyList(),
     val query: String = "",
+    val isTelegramConnected: Boolean = false,
     val errorMessage: String? = null,
     val uploadPanel: UploadPanelState = UploadPanelState(),
     val showTelegramConnectPrompt: Boolean = false,
@@ -94,9 +95,11 @@ class HomeViewModel @Inject constructor(
 
             val foldersDeferred = async { folderRepository.getRootFolders(limit = 20) }
             val filesDeferred = async { fileRepository.getRecentFiles(limit = 60) }
+            val telegramStatusDeferred = async { telegramRepository.getStatus() }
 
             val folderResult = foldersDeferred.await()
             val fileResult = filesDeferred.await()
+            val telegramStatusResult = telegramStatusDeferred.await()
 
             val error = folderResult.exceptionOrNull()?.message
                 ?: fileResult.exceptionOrNull()?.message
@@ -106,6 +109,7 @@ class HomeViewModel @Inject constructor(
                     isLoading = false,
                     folders = folderResult.getOrElse { emptyList() },
                     files = fileResult.getOrElse { emptyList() },
+                    isTelegramConnected = telegramStatusResult.getOrNull()?.connected ?: it.isTelegramConnected,
                     errorMessage = error,
                 )
             }
@@ -171,9 +175,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(showTelegramConnectPrompt = false) }
 
-            val telegramConnected = telegramRepository.getStatus()
-                .getOrNull()
-                ?.connected
+            val telegramStatusResult = telegramRepository.getStatus()
+            val telegramConnected = telegramStatusResult.getOrNull()?.connected
+            _uiState.update {
+                it.copy(
+                    isTelegramConnected = telegramConnected ?: it.isTelegramConnected,
+                )
+            }
 
             if (telegramConnected == false) {
                 _uiState.update { it.copy(showTelegramConnectPrompt = true) }

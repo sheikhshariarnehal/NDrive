@@ -1,5 +1,11 @@
 package com.ndrive.cloudvault.presentation.home.components
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -22,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,11 +41,28 @@ import androidx.compose.ui.unit.sp
 fun TopSearchBar(
     onMenuClick: () -> Unit,
     onProfileClick: () -> Unit,
+    isTelegramConnected: Boolean = false,
     onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
     val avatarColor    = MaterialTheme.colorScheme.primary
+    val connectedBorderBlue = Color(0xFF2F80FF)
+
+    val borderAnimation = rememberInfiniteTransition(label = "profileBorder")
+    val borderAlpha = if (isTelegramConnected) {
+        borderAnimation.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1100),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "profileBorderAlpha",
+        ).value
+    } else {
+        0f
+    }
 
     Surface(
         shape = CircleShape,
@@ -69,7 +93,22 @@ fun TopSearchBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            Box {
+            Box(
+                modifier = Modifier
+                    .size(40.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isTelegramConnected) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .border(
+                                width = 2.dp,
+                                color = connectedBorderBlue.copy(alpha = borderAlpha),
+                                shape = CircleShape,
+                            )
+                    )
+                }
                 Surface(
                     shape = CircleShape,
                     color = avatarColor,
