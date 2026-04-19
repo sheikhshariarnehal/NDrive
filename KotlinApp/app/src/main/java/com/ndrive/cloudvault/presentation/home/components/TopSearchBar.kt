@@ -1,12 +1,6 @@
 package com.ndrive.cloudvault.presentation.home.components
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -30,9 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,34 +47,6 @@ fun TopSearchBar(
     val searchBarColor = MaterialTheme.colorScheme.surfaceVariant
     val avatarColor    = MaterialTheme.colorScheme.primary
     val connectedBorderBlue = Color(0xFF2F80FF)
-
-    val borderAnimation = rememberInfiniteTransition(label = "profileBorder")
-    val borderAlpha = if (isTelegramConnected) {
-        borderAnimation.animateFloat(
-            initialValue = 0.25f,
-            targetValue = 0.45f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1400),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "profileBorderAlpha",
-        ).value
-    } else {
-        0f
-    }
-    val ringRotation = if (isTelegramConnected) {
-        borderAnimation.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 2200, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-            label = "profileBorderRotation",
-        ).value
-    } else {
-        0f
-    }
 
     Surface(
         shape = CircleShape,
@@ -116,27 +79,20 @@ fun TopSearchBar(
             )
             Box(
                 modifier = Modifier
-                    .size(40.dp),
+                    .size(40.dp)
+                    .then(
+                        if (isTelegramConnected) {
+                            Modifier.border(
+                                width = 2.dp,
+                                color = connectedBorderBlue,
+                                shape = CircleShape,
+                            )
+                        } else {
+                            Modifier
+                        }
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isTelegramConnected) {
-                    Canvas(modifier = Modifier.size(36.dp)) {
-                        val strokePx = 2.dp.toPx()
-                        drawCircle(
-                            color = connectedBorderBlue.copy(alpha = borderAlpha),
-                            style = Stroke(width = strokePx),
-                        )
-                        rotate(degrees = ringRotation) {
-                            drawArc(
-                                color = connectedBorderBlue.copy(alpha = 0.95f),
-                                startAngle = -90f,
-                                sweepAngle = 120f,
-                                useCenter = false,
-                                style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                            )
-                        }
-                    }
-                }
                 Surface(
                     shape = CircleShape,
                     color = avatarColor,
