@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ndrive.cloudvault.domain.model.DriveFile
 import com.ndrive.cloudvault.domain.model.DriveFolder
+import com.ndrive.cloudvault.presentation.common.resolveFileIconStyle
 import com.ndrive.cloudvault.presentation.home.components.FileCard
 import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.FolderCard
@@ -287,6 +288,7 @@ fun FilesScreen(
                         contentType = { "file" },
                     ) { index ->
                         val file = visibleFiles[index]
+                        val fileIconStyle = resolveFileIconStyle(file.name, file.mimeType)
                         if (isGridView) {
                             val globalIndex = visibleFolders.size + index
                             Box(
@@ -298,7 +300,9 @@ fun FilesScreen(
                                 FileCard(
                                     name = file.name,
                                     thumbnailUrl = file.thumbnailUrl,
-                                    isImage = file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/"),
+                                    isImage = fileIconStyle.prefersMediaPreview,
+                                    fileTypeIcon = fileIconStyle.icon,
+                                    fileTypeTint = fileIconStyle.tint,
                                 ) {
                                     navigateToPreview(file.id)
                                 }
@@ -307,7 +311,8 @@ fun FilesScreen(
                             FileRow(
                                 name = file.name,
                                 subtitle = formatUpdatedAt(file.updatedAt),
-                                iconTint = Color(0xFFEA4335),
+                                iconTint = fileIconStyle.tint,
+                                iconVector = fileIconStyle.icon,
                                 isLoading = false,
                             ) {
                                 navigateToPreview(file.id)

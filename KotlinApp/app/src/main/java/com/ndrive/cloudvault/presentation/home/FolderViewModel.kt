@@ -35,6 +35,10 @@ class FolderViewModel @Inject constructor(
     private val folderRepository: FolderRepository,
 ) : ViewModel() {
 
+    private companion object {
+        const val CHILD_ITEMS_LIMIT = 1000
+    }
+
     private val _uiState = MutableStateFlow(FolderUiState())
     val uiState: StateFlow<FolderUiState> = _uiState.asStateFlow()
 
@@ -64,8 +68,12 @@ class FolderViewModel @Inject constructor(
                 return@launch
             }
 
-            val childFoldersDeferred = async { folderRepository.getFoldersByParentId(parentId = folderId, limit = 100) }
-            val filesDeferred = async { fileRepository.getFilesByFolderId(folderId = folderId, limit = 200) }
+            val childFoldersDeferred = async {
+                folderRepository.getFoldersByParentId(parentId = folderId, limit = CHILD_ITEMS_LIMIT)
+            }
+            val filesDeferred = async {
+                fileRepository.getFilesByFolderId(folderId = folderId, limit = CHILD_ITEMS_LIMIT)
+            }
             val breadcrumbsDeferred = async { buildBreadcrumbs(currentFolder) }
 
             val childFoldersResult = childFoldersDeferred.await()

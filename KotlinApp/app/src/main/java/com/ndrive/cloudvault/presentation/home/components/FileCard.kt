@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,8 @@ fun FileCard(
     name: String,
     thumbnailUrl: String? = null,
     isImage: Boolean = false,
+    fileTypeIcon: ImageVector = Icons.Default.Description,
+    fileTypeTint: Color = Color(0xFF5F6368),
     isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -65,10 +68,14 @@ fun FileCard(
                     )
                 } else {
                     Icon(
-                        imageVector = if (isImage) Icons.Default.Image else Icons.Default.Description,
+                        imageVector = if (isImage) Icons.Default.Image else fileTypeIcon,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        tint = if (isImage) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        } else {
+                            fileTypeTint.copy(alpha = 0.45f)
+                        }
                     )
                 }
             }
@@ -84,9 +91,9 @@ fun FileCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (isImage) Icons.Default.Image else Icons.Default.Description,
+                    imageVector = if (isImage) Icons.Default.Image else fileTypeIcon,
                     contentDescription = null,
-                    tint = if (isImage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isImage) MaterialTheme.colorScheme.secondary else fileTypeTint,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))

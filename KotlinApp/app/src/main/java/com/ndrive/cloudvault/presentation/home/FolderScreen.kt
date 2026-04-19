@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ndrive.cloudvault.presentation.common.resolveFileIconStyle
 import com.ndrive.cloudvault.presentation.home.components.FileCard
 import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.FolderCard
@@ -276,6 +277,7 @@ fun FolderScreen(
                             key = { index -> uiState.files[index].id }
                         ) { index ->
                             val file = uiState.files[index]
+                            val fileIconStyle = resolveFileIconStyle(file.name, file.mimeType)
                             if (isGridView) {
                                 val globalIndex = uiState.folders.size + index
                                 Box(
@@ -287,7 +289,9 @@ fun FolderScreen(
                                     FileCard(
                                         name = file.name,
                                         thumbnailUrl = file.thumbnailUrl,
-                                        isImage = file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/"),
+                                        isImage = fileIconStyle.prefersMediaPreview,
+                                        fileTypeIcon = fileIconStyle.icon,
+                                        fileTypeTint = fileIconStyle.tint,
                                     ) {
                                         navController.navigate("preview/${Uri.encode(file.id)}")
                                     }
@@ -296,6 +300,8 @@ fun FolderScreen(
                                 FileRow(
                                     name = file.name,
                                     subtitle = "Modified ${file.updatedAt?.take(10) ?: "Unknown"}",
+                                    iconTint = fileIconStyle.tint,
+                                    iconVector = fileIconStyle.icon,
                                 ) {
                                     navController.navigate("preview/${Uri.encode(file.id)}")
                                 }

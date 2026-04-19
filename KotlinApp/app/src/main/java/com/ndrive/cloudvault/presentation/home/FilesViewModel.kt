@@ -27,6 +27,10 @@ class FilesViewModel @Inject constructor(
         private val folderRepository: FolderRepository
 ) : ViewModel() {
 
+        private companion object {
+                const val ROOT_ITEMS_LIMIT = 1000
+        }
+
         private val _uiState = MutableStateFlow(FilesUiState())
         val uiState: StateFlow<FilesUiState> = _uiState.asStateFlow()
 
@@ -38,8 +42,8 @@ class FilesViewModel @Inject constructor(
                 viewModelScope.launch {
                         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-                        val filesResult = fileRepository.getRootFiles(limit = 100)
-                        val foldersResult = folderRepository.getRootFolders(limit = 100)
+                        val filesResult = fileRepository.getRootFiles(limit = ROOT_ITEMS_LIMIT)
+                        val foldersResult = folderRepository.getRootFolders(limit = ROOT_ITEMS_LIMIT)
 
                         val hasError = filesResult.isFailure || foldersResult.isFailure
 
