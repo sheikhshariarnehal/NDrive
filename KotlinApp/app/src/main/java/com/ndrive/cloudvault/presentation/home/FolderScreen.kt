@@ -215,7 +215,10 @@ fun FolderScreen(
                 }
 
                 if (uiState.isLoading) {
-                    items(8) { index ->
+                    items(
+                        count = 8,
+                        key = { index -> "loading-$index" }
+                    ) { index ->
                         if (isGridView) {
                             Box(
                                 modifier = Modifier.padding(
@@ -226,7 +229,15 @@ fun FolderScreen(
                                 FileCard(name = "", isLoading = true) { }
                             }
                         } else {
-                            FileRow(name = "", subtitle = "", isLoading = true) { }
+                            if (index < 3) {
+                                FolderCard(
+                                    name = "",
+                                    subtitle = "",
+                                    isLoading = true,
+                                ) { }
+                            } else {
+                                FileRow(name = "", subtitle = "", isLoading = true) { }
+                            }
                         }
                     }
                 } else {

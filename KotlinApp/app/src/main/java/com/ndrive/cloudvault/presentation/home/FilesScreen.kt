@@ -2,27 +2,19 @@ package com.ndrive.cloudvault.presentation.home
 
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Slideshow
-import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,32 +22,56 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.ndrive.cloudvault.presentation.home.components.FileCard
 import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.FolderCard
-import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav       
-import kotlinx.coroutines.delay
-
-import com.ndrive.cloudvault.presentation.home.components.GridListToggle        
-import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet  
+import com.ndrive.cloudvault.presentation.home.components.FolderGridCard
+import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
+import com.ndrive.cloudvault.presentation.home.components.GridListToggle
+import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
 import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 import com.ndrive.cloudvault.presentation.home.components.TopSearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilesScreen(navController: androidx.navigation.NavController, viewModel: FilesViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
+fun FilesScreen(
+    navController: NavController,
+    viewModel: FilesViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
-    var isGridView by remember { mutableStateOf(false) }
+    var isGridView by rememberSaveable { mutableStateOf(false) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var showCreateSheet by remember { mutableStateOf(false) }
+    var showAppDrawer by remember { mutableStateOf(false) }
+
+    val tabs = remember { listOf("All", "Recent", "Starred") }
+
+    val visibleFolders by remember(uiState.folders, selectedTabIndex) {
+        derivedStateOf {
+            when (selectedTabIndex) {
+                1 -> emptyList() // Recent tab only shows files
+                2 -> uiState.folders.filter { it.isStarred }.sortedBy { it.name.lowercase() }
+                else -> uiState.folders.sortedBy { it.name.lowercase() }
+            }
+        }
+    }
+
+    val visibleFiles by remember(uiState.files, selectedTabIndex) {
+        derivedStateOf {
+            when (selectedTabIndex) {
+                1 -> uiState.files.sortedByDescending { it.updatedAt.orEmpty() }
+                2 -> uiState.files.filter { it.isStarred }.sortedBy { it.name.lowercase() }
+                else -> uiState.files.sortedBy { it.name.lowercase() }
+            }
+        }
+    }
 
     val navigateToPreview: (String) -> Unit = { fileId ->
         navController.navigate("preview/${Uri.encode(fileId)}")
     }
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
-
-    var showCreateSheet by remember { mutableStateOf(false) }
-    var showAppDrawer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -77,7 +93,6 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                     onSearchClick = { navController.navigate("search") }
                 )
 
-                // Tabs and Grid/List toggle row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -85,7 +100,6 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val tabs = listOf("All", "Recent", "Starred")
                     ScrollableTabRow(
                         selectedTabIndex = selectedTabIndex,
                         containerColor = backgroundColor,
@@ -166,16 +180,38 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-        // Folders and Files content
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(if (isGridView) 2 else 1),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isGridView) 16.dp else 0.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (isGridView) 2 else 1),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isGridView) 16.dp else 0.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                uiState.errorMessage?.let { errorMessage ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                            ),
+                        ) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
+
                 if (uiState.isLoading) {
-                    items(8) { index ->
+                    items(
+                        count = 8,
+                        key = { index -> "loading-$index" }
+                    ) { index ->
                         if (isGridView) {
                             Box(
                                 modifier = Modifier.padding(
@@ -186,21 +222,27 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                                 FileCard(name = "", isLoading = true) {}
                             }
                         } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(72.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                            )
+                            if (index < 3) {
+                                FolderCard(
+                                    name = "",
+                                    subtitle = "",
+                                    isLoading = true,
+                                ) { }
+                            } else {
+                                FileRow(
+                                    name = "",
+                                    subtitle = "",
+                                    isLoading = true,
+                                ) { }
+                            }
                         }
                     }
                 } else {
                     items(
-                        count = uiState.folders.size,
-                        key = { index -> uiState.folders[index].id }
+                        count = visibleFolders.size,
+                        key = { index -> visibleFolders[index].id }
                     ) { index ->
-                        val folder = uiState.folders[index]
+                        val folder = visibleFolders[index]
                         if (isGridView) {
                             Box(
                                 modifier = Modifier.padding(
@@ -208,15 +250,15 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                                     end = if (index % 2 == 0) 8.dp else 16.dp
                                 )
                             ) {
-                                com.ndrive.cloudvault.presentation.home.components.FolderGridCard(name = folder.name) {
+                                FolderGridCard(name = folder.name) {
                                     navController.navigate("folder/${Uri.encode(folder.id)}")
                                 }
                             }
                         } else {
                             FolderCard(
                                 name = folder.name,
-                                subtitle = folder.updatedAt ?: "Unknown",
-                                iconTint = Color(0xFF4285F4)
+                                subtitle = formatUpdatedAt(folder.updatedAt),
+                                iconTint = Color(0xFF4285F4),
                             ) {
                                 navController.navigate("folder/${Uri.encode(folder.id)}")
                             }
@@ -224,36 +266,71 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
                     }
 
                     items(
-                        count = uiState.files.size,
-                        key = { index -> uiState.files[index].id }
-                    ) { index -> 
-                        val file = uiState.files[index]
-                        if(isGridView) {
-                           val globalIndex = uiState.folders.size + index
-                           Box(
-                               modifier = Modifier.padding(
-                                   start = if (globalIndex % 2 == 0) 16.dp else 8.dp,
-                                   end = if (globalIndex % 2 == 0) 8.dp else 16.dp
-                               )
-                           ) {
-                               FileCard(name=file.name, thumbnailUrl=file.thumbnailUrl, isImage=file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/")) {
-                                   navigateToPreview(file.id)
-                               }
-                           }
+                        count = visibleFiles.size,
+                        key = { index -> visibleFiles[index].id }
+                    ) { index ->
+                        val file = visibleFiles[index]
+                        if (isGridView) {
+                            val globalIndex = visibleFolders.size + index
+                            Box(
+                                modifier = Modifier.padding(
+                                    start = if (globalIndex % 2 == 0) 16.dp else 8.dp,
+                                    end = if (globalIndex % 2 == 0) 8.dp else 16.dp,
+                                )
+                            ) {
+                                FileCard(
+                                    name = file.name,
+                                    thumbnailUrl = file.thumbnailUrl,
+                                    isImage = file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/"),
+                                ) {
+                                    navigateToPreview(file.id)
+                                }
+                            }
                         } else {
-                           FileRow(
-                               name=file.name, 
-                               subtitle=file.updatedAt?:"Unknown", 
-                               iconTint = Color(0xFFEA4335),
-                               isLoading=false
-                           ) {
-                               navigateToPreview(file.id)
-                           }
-                        } 
+                            FileRow(
+                                name = file.name,
+                                subtitle = formatUpdatedAt(file.updatedAt),
+                                iconTint = Color(0xFFEA4335),
+                                isLoading = false,
+                            ) {
+                                navigateToPreview(file.id)
+                            }
+                        }
+                    }
+
+                    if (visibleFolders.isEmpty() && visibleFiles.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = when (selectedTabIndex) {
+                                        1 -> "No recent files"
+                                        2 -> "No starred items"
+                                        else -> "No files or folders yet"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = when (selectedTabIndex) {
+                                        1 -> "Upload or edit files to see them in Recent."
+                                        2 -> "Star files or folders to quickly access them here."
+                                        else -> "Create folders or upload files to get started."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
             }
-        } // end PullToRefreshBox
+        }
     }
 
     if (showCreateSheet) {
@@ -264,7 +341,11 @@ fun FilesScreen(navController: androidx.navigation.NavController, viewModel: Fil
     }
 }
 
-class FileMock(val name: String, val subtitle: String, val tint: Color, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+private fun formatUpdatedAt(updatedAt: String?): String {
+    if (updatedAt.isNullOrBlank()) return "Modified recently"
+    val date = updatedAt.substringBefore('T').takeIf { it.length == 10 } ?: updatedAt.take(10)
+    return "Modified $date"
+}
 
 
 
