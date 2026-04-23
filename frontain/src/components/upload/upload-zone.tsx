@@ -24,6 +24,32 @@ type RateLimitLikeError = Error & {
   retryAfter?: number;
 };
 
+const THUMBNAIL_GENERATION_TIMEOUT_MS = 15_000;
+const IMAGE_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "avif", "heic", "heif",
+]);
+const VIDEO_EXTENSIONS = new Set([
+  "mp4", "mov", "m4v", "webm", "mkv", "avi", "mpeg", "mpg", "3gp",
+]);
+
+function getFileExt(fileName: string): string {
+  const idx = fileName.lastIndexOf(".");
+  if (idx < 0 || idx === fileName.length - 1) return "";
+  return fileName.slice(idx + 1).toLowerCase();
+}
+
+function isLikelyVideoFile(file: File): boolean {
+  if (file.type.startsWith("video/")) return true;
+  if (file.type.startsWith("image/")) return false;
+  return VIDEO_EXTENSIONS.has(getFileExt(file.name));
+}
+
+function isLikelyImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  if (file.type.startsWith("video/")) return false;
+  return IMAGE_EXTENSIONS.has(getFileExt(file.name));
+}
+
 // ─── Folder / Directory Handling Utilities ──────────────────────────────────
 
 interface FileWithPath {
@@ -683,18 +709,20 @@ export function UploadZone({ children, folderId = null }: UploadZoneProps) {
 
     // Start thumbnail generation in parallel with upload.
     const thumbnailPromise: Promise<string | null> = (async () => {
-      if (!file.type.startsWith("video/") && !file.type.startsWith("image/")) {
+      const likelyVideo = isLikelyVideoFile(file);
+      const likelyImage = isLikelyImageFile(file);
+      if (!likelyVideo && !likelyImage) {
         return null;
       }
 
       try {
-        const rawThumbnailPromise = file.type.startsWith("video/")
+        const rawThumbnailPromise = likelyVideo
           ? extractVideoThumbnail(file)
           : extractImageThumbnail(file);
 
         const thumbnailBlob = await Promise.race([
           rawThumbnailPromise,
-          new Promise<null>((r) => setTimeout(() => r(null), 5000)),
+          new Promise<null>((r) => setTimeout(() => r(null), THUMBNAIL_GENERATION_TIMEOUT_MS)),
         ]);
 
         if (!thumbnailBlob) return null;

@@ -24,6 +24,17 @@ function extractThumbnailInfo(content: Record<string, unknown>): {
     return (thumbFile?.id as number) ?? null;
   };
 
+  const extractMiniDataUri = (...candidates: Array<unknown>): string | null => {
+    for (const candidate of candidates) {
+      const mini = asRecord(candidate);
+      const data = mini?.data;
+      if (typeof data === "string" && data.length > 0) {
+        return `data:image/jpeg;base64,${data}`;
+      }
+    }
+    return null;
+  };
+
   switch (content?._) {
     case "messagePhoto": {
       const photo = asRecord(content.photo);
@@ -32,32 +43,62 @@ function extractThumbnailInfo(content: Record<string, unknown>): {
         const thumbFile = asRecord(sizes[0].photo);
         thumbnailFileId = thumbFile?.id as number ?? null;
       }
-      const mini = (photo?.minithumbnail as Record<string, unknown>);
-      if (mini?.data) minithumbnail = `data:image/jpeg;base64,${mini.data}`;
+      minithumbnail = extractMiniDataUri(photo?.minithumbnail);
       break;
     }
     case "messageVideo": {
       const video = asRecord(content.video);
       thumbnailFileId = extractThumbFileId(video);
-      const mini = (video?.minithumbnail as Record<string, unknown>);
-      if (mini?.data) minithumbnail = `data:image/jpeg;base64,${mini.data}`;
+      minithumbnail = extractMiniDataUri(
+        video?.minithumbnail,
+        asRecord(video?.thumbnail)?.minithumbnail,
+      );
+      break;
+    }
+    case "messageAudio": {
+      const audio = asRecord(content.audio);
+      thumbnailFileId = extractThumbFileId(audio);
+      minithumbnail = extractMiniDataUri(
+        audio?.album_cover_minithumbnail,
+        audio?.minithumbnail,
+        asRecord(audio?.album_cover_thumbnail)?.minithumbnail,
+      );
       break;
     }
     case "messageDocument": {
       const doc = asRecord(content.document);
       thumbnailFileId = extractThumbFileId(doc);
+      minithumbnail = extractMiniDataUri(
+        doc?.minithumbnail,
+        asRecord(doc?.thumbnail)?.minithumbnail,
+      );
       break;
     }
     case "messageSticker": {
       const sticker = asRecord(content.sticker);
       thumbnailFileId = extractThumbFileId(sticker);
-      const mini = asRecord(sticker?.thumbnail)?.minithumbnail as Record<string, unknown> | undefined;
-      if (mini?.data) minithumbnail = `data:image/jpeg;base64,${mini.data}`;
+      minithumbnail = extractMiniDataUri(
+        asRecord(sticker?.thumbnail)?.minithumbnail,
+        sticker?.minithumbnail,
+      );
       break;
     }
     case "messageAnimation": {
       const animation = asRecord(content.animation);
       thumbnailFileId = extractThumbFileId(animation);
+      minithumbnail = extractMiniDataUri(
+        animation?.minithumbnail,
+        asRecord(animation?.thumbnail)?.minithumbnail,
+      );
+      break;
+    }
+    case "messageVideoNote": {
+      const videoNote = asRecord(content.video_note);
+      thumbnailFileId = extractThumbFileId(videoNote);
+      minithumbnail = extractMiniDataUri(
+        videoNote?.minithumbnail,
+        asRecord(videoNote?.thumbnail)?.minithumbnail,
+      );
       break;
     }
   }

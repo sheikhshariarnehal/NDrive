@@ -2,6 +2,41 @@ import { generateThumbnail, type ThumbnailOptions } from "@/lib/telegram/thumbna
 import { uploadThumbnail, isR2Configured } from "@/lib/r2";
 import { SupabaseClient } from "@supabase/supabase-js";
 
+const VISUAL_MIME_PREFIXES = ["image/", "video/"];
+
+function isVisualMime(mimeType?: string | null): boolean {
+  return !!mimeType && VISUAL_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix));
+}
+
+async function persistClientThumbnail(
+  supabase: SupabaseClient,
+  fileId: string,
+  clientThumbnailBase64: string,
+  logLabel?: string,
+): Promise<string | null> {
+  try {
+    const buffer = Buffer.from(clientThumbnailBase64, "base64");
+    if (!buffer.length) return null;
+
+    const r2Url = await uploadThumbnail(fileId, buffer, "image/jpeg");
+    const { error } = await supabase
+      .from("files")
+      .update({ thumbnail_url: r2Url })
+      .eq("id", fileId);
+
+    if (error) {
+      console.error("[Upload] Client thumbnail DB update failed:", error.message);
+      return null;
+    }
+
+    console.log(`[Upload] Client thumbnail saved to R2 for ${logLabel || fileId}`);
+    return r2Url;
+  } catch (thumbErr) {
+    console.error("[Upload] Client thumbnail R2 upload failed:", thumbErr);
+    return null;
+  }
+}
+
 /**
  * Generate and persist a thumbnail for a newly uploaded file.
  *
@@ -28,40 +63,43 @@ export async function resolveUploadThumbnail(
     logLabel?: string;
   },
 ): Promise<string | null> {
-  if (
-    !fileRecord.mime_type?.startsWith("image/") &&
-    !fileRecord.mime_type?.startsWith("video/")
-  ) {
+  const hasVisualMime = isVisualMime(fileRecord.mime_type);
+  const canUseClientFallback = !!opts.clientThumbnail && isR2Configured();
+
+  if (!hasVisualMime && !canUseClientFallback) {
     return null;
   }
 
-  const thumbOpts: ThumbnailOptions = {
-    storageType: fileRecord.storage_type || opts.storageType,
-    userId: opts.userId,
-    chatId: fileRecord.telegram_chat_id,
-  };
+  let r2Url: string | null = null;
 
-  // 1. Try Telegram-based thumbnail
-  let r2Url = await generateThumbnail(
-    fileRecord.id,
-    fileRecord.telegram_message_id!,
-    thumbOpts,
-  );
+  // 1) Persist client thumbnail first when available. This guarantees
+  // a usable thumbnail even if Telegram processing is delayed.
+  if (canUseClientFallback && opts.clientThumbnail) {
+    r2Url = await persistClientThumbnail(
+      supabase,
+      fileRecord.id,
+      opts.clientThumbnail,
+      opts.logLabel,
+    );
+  }
 
-  // 2. Fallback: client-generated thumbnail
-  if (!r2Url && opts.clientThumbnail && isR2Configured()) {
-    try {
-      const buffer = Buffer.from(opts.clientThumbnail, "base64");
-      if (buffer.length > 0) {
-        r2Url = await uploadThumbnail(fileRecord.id, buffer, "image/jpeg");
-        await supabase
-          .from("files")
-          .update({ thumbnail_url: r2Url })
-          .eq("id", fileRecord.id);
-        console.log(`[Upload] Client thumbnail saved to R2 for ${opts.logLabel || fileRecord.id}`);
-      }
-    } catch (thumbErr) {
-      console.error("[Upload] Client thumbnail R2 upload failed:", thumbErr);
+  // 2) Try Telegram-based thumbnail and let it replace the fallback
+  // with a potentially better-quality frame when available.
+  if (hasVisualMime && fileRecord.telegram_message_id) {
+    const thumbOpts: ThumbnailOptions = {
+      storageType: fileRecord.storage_type || opts.storageType,
+      userId: opts.userId,
+      chatId: fileRecord.telegram_chat_id,
+    };
+
+    const telegramR2Url = await generateThumbnail(
+      fileRecord.id,
+      fileRecord.telegram_message_id,
+      thumbOpts,
+    );
+
+    if (telegramR2Url) {
+      r2Url = telegramR2Url;
     }
   }
 

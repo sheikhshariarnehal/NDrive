@@ -68,10 +68,8 @@ function getThumbnailSrc(file: DbFile): string | null {
 }
 
 /** Whether a file category should attempt to show a thumbnail preview. */
-function shouldShowThumbnail(file: DbFile, category: string): boolean {
+function shouldShowThumbnail(file: DbFile): boolean {
   if (file.mime_type === "image/svg+xml") return false;
-  if (category !== "image" && category !== "video") return false;
-  // Only show thumbnail if we have a URL — avoids 404 API calls for files without thumbnails
   return !!getThumbnailSrc(file);
 }
 
@@ -87,7 +85,7 @@ export function FileCard({ file, priority = false }: FileCardProps) {
   const [isVisible, setIsVisible] = useState(priority); // Only render image when visible
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const hasThumbnail = shouldShowThumbnail(file, category) && !imgError;
+  const hasThumbnail = shouldShowThumbnail(file) && !imgError;
   const thumbnailSrc = hasThumbnail ? getThumbnailSrc(file) : null;
 
   const onImgLoad = useCallback(() => setImgLoaded(true), []);

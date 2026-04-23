@@ -4,6 +4,7 @@ import { resolveUploadThumbnail } from "@/lib/telegram/upload-thumbnail";
 
 const BACKEND_URL = process.env.TDLIB_SERVICE_URL || "http://localhost:3001";
 const API_KEY = process.env.TDLIB_SERVICE_API_KEY || "";
+const THUMBNAIL_WAIT_MS = 12_000;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -109,14 +110,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    void resolveUploadThumbnail(supabase, fileRecord, {
+    const thumbnailPromise = resolveUploadThumbnail(supabase, fileRecord, {
       storageType: completeResult.storage_type || "bot",
       userId,
       clientThumbnail,
       logLabel: fileName,
-    }).catch((thumbErr) => {
-      console.warn("[upload/finalize] Background thumbnail generation failed:", thumbErr);
     });
+
+    const timedThumbnail = await Promise.race<string | null | "timeout">([
+      thumbnailPromise.catch((thumbErr) => {
+        console.warn("[upload/finalize] Background thumbnail generation failed:", thumbErr);
+        return null;
+      }),
+      new Promise<"timeout">((resolve) => {
+        setTimeout(() => resolve("timeout"), THUMBNAIL_WAIT_MS);
+      }),
+    ]);
+
+    if (timedThumbnail === "timeout") {
+      console.warn("[upload/finalize] Thumbnail generation still running in background");
+    } else if (timedThumbnail) {
+      fileRecord.thumbnail_url = timedThumbnail;
+    }
 
     if (completeResult.session_expired && userId) {
       console.warn(`[upload/finalize] Telegram session expired for user ${userId}, marking disconnected`);
