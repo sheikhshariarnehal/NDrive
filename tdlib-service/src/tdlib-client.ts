@@ -1,11 +1,21 @@
 import tdl from "tdl";
 import { getTdjson } from "prebuilt-tdlib";
 import path from "path";
+import fs from "fs";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Service root = two levels up from dist/ or src/
 const SERVICE_ROOT = path.resolve(__dirname, "..");
+
+const TEMP_DIR = os.tmpdir();
+const EPHEMERAL_ROOTS = [
+  path.join(SERVICE_ROOT, ".next"),
+  path.join(SERVICE_ROOT, "dist"),
+  path.join(SERVICE_ROOT, "build"),
+  path.join(SERVICE_ROOT, ".vercel"),
+];
 
 let clientInstance: ReturnType<typeof tdl.createClient> | null = null;
 let isReady = false;
@@ -21,6 +31,30 @@ interface TDLibConfig {
   filesPath: string;
 }
 
+function isSubpath(parent: string, child: string): boolean {
+  const normalizedParent = path.resolve(parent);
+  const normalizedChild = path.resolve(child);
+  const rel = path.relative(normalizedParent, normalizedChild);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function assertPersistentPath(label: string, dir: string): void {
+  if (isSubpath(TEMP_DIR, dir)) {
+    throw new Error(`${label} must not be inside temp storage (${TEMP_DIR}).`);
+  }
+  for (const root of EPHEMERAL_ROOTS) {
+    if (isSubpath(root, dir)) {
+      throw new Error(`${label} must not be inside build output (${root}).`);
+    }
+  }
+}
+
+function ensurePersistentDir(label: string, dir: string): string {
+  assertPersistentPath(label, dir);
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 function getConfig(): TDLibConfig {
   const apiId = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
   const apiHash = process.env.TELEGRAM_API_HASH || "";
@@ -29,12 +63,14 @@ function getConfig(): TDLibConfig {
   // Resolve paths relative to service root so they work regardless of cwd
   const rawDbPath = process.env.TDLIB_DATABASE_PATH || "./tdlib-data";
   const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
-  const databasePath = path.isAbsolute(rawDbPath)
-    ? rawDbPath
-    : path.join(SERVICE_ROOT, rawDbPath);
-  const filesPath = path.isAbsolute(rawFilesPath)
-    ? rawFilesPath
-    : path.join(SERVICE_ROOT, rawFilesPath);
+  const databasePath = ensurePersistentDir(
+    "TDLIB_DATABASE_PATH",
+    path.isAbsolute(rawDbPath) ? rawDbPath : path.join(SERVICE_ROOT, rawDbPath),
+  );
+  const filesPath = ensurePersistentDir(
+    "TDLIB_FILES_PATH",
+    path.isAbsolute(rawFilesPath) ? rawFilesPath : path.join(SERVICE_ROOT, rawFilesPath),
+  );
 
   if (!apiId || !apiHash || !botToken) {
     throw new Error(

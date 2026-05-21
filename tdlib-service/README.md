@@ -30,6 +30,8 @@ TELEGRAM_API_ID=12345678
 TELEGRAM_API_HASH=your_api_hash_here
 TDLIB_SERVICE_API_KEY=generate_a_strong_random_key
 PORT=3001
+TDLIB_DATABASE_PATH=./tdlib-data
+TDLIB_FILES_PATH=./tdlib-files
 ```
 
 ### 3. Install & Run
@@ -47,6 +49,7 @@ npm start      # Production
 2. Connect to Railway → New Project → Deploy from GitHub
 3. Add environment variables in Railway dashboard
 4. **Add a persistent volume** mounted at `/data` (critical for TDLib session)
+5. Set `TDLIB_DATABASE_PATH=/data/tdlib-data` and `TDLIB_FILES_PATH=/data/tdlib-files`
 5. Deploy
 
 ## API Endpoints

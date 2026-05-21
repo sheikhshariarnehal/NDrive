@@ -14,6 +14,7 @@ import tdl from "tdl";
 import { getTdjson } from "prebuilt-tdlib";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,33 @@ function getApiConfig() {
 
 function resolvePath(raw: string): string {
   return path.isAbsolute(raw) ? raw : path.join(SERVICE_ROOT, raw);
+}
+
+const TEMP_DIR = os.tmpdir();
+const EPHEMERAL_ROOTS = [
+  path.join(SERVICE_ROOT, ".next"),
+  path.join(SERVICE_ROOT, "dist"),
+  path.join(SERVICE_ROOT, "build"),
+  path.join(SERVICE_ROOT, ".vercel"),
+];
+
+function isSubpath(parent: string, child: string): boolean {
+  const normalizedParent = path.resolve(parent);
+  const normalizedChild = path.resolve(child);
+  const rel = path.relative(normalizedParent, normalizedChild);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function assertPersistentPath(label: string, dir: string): void {
+  if (isSubpath(TEMP_DIR, dir)) {
+    throw new Error(`${label} must not be inside temp storage (${TEMP_DIR}).`);
+  }
+
+  for (const root of EPHEMERAL_ROOTS) {
+    if (isSubpath(root, dir)) {
+      throw new Error(`${label} must not be inside build output (${root}).`);
+    }
+  }
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -73,6 +101,13 @@ export interface UserSession {
   phone: string | null;
 }
 
+interface StorageRoots {
+  databaseRoot: string;
+  filesRoot: string;
+  databaseRootExisted: boolean;
+  filesRootExisted: boolean;
+}
+
 // ── Rate limiting for auth attempts ──────────────────────────────────────────
 // Max 3 send-code attempts per user per 10 minutes
 const AUTH_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -99,6 +134,36 @@ class SessionManager {
   private activeSessions = new Map<string, UserSession>();
   private botSession: UserSession | null = null;
   private initialized = false;
+  private storageRoots: StorageRoots | null = null;
+  private storageRootsLogged = false;
+
+  private getStorageRoots(): StorageRoots {
+    if (this.storageRoots) return this.storageRoots;
+
+    const rawDbPath = process.env.TDLIB_DATABASE_PATH || "./tdlib-data";
+    const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
+
+    const databaseRoot = resolvePath(rawDbPath);
+    const filesRoot = resolvePath(rawFilesPath);
+
+    assertPersistentPath("TDLIB_DATABASE_PATH", databaseRoot);
+    assertPersistentPath("TDLIB_FILES_PATH", filesRoot);
+
+    const databaseRootExisted = fs.existsSync(databaseRoot);
+    const filesRootExisted = fs.existsSync(filesRoot);
+
+    fs.mkdirSync(databaseRoot, { recursive: true });
+    fs.mkdirSync(filesRoot, { recursive: true });
+
+    this.storageRoots = {
+      databaseRoot,
+      filesRoot,
+      databaseRootExisted,
+      filesRootExisted,
+    };
+
+    return this.storageRoots;
+  }
 
   // ── Bot session (always alive, doesn't count toward pool limit) ──────────
 
@@ -109,10 +174,14 @@ class SessionManager {
     }
 
     const { apiId, apiHash } = getApiConfig();
-    const rawDbPath = process.env.TDLIB_DATABASE_PATH || "./tdlib-data";
-    const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
-    const databaseDirectory = resolvePath(rawDbPath);
-    const filesDirectory = resolvePath(rawFilesPath);
+    const { databaseRoot, filesRoot, databaseRootExisted, filesRootExisted } = this.getStorageRoots();
+    if (!this.storageRootsLogged) {
+      console.log(`[SessionManager] TDLib database path: ${databaseRoot} (exists=${databaseRootExisted})`);
+      console.log(`[SessionManager] TDLib files path: ${filesRoot} (exists=${filesRootExisted})`);
+      this.storageRootsLogged = true;
+    }
+    const databaseDirectory = databaseRoot;
+    const filesDirectory = filesRoot;
 
     tdl.configure({ tdjson: getTdjson() });
 
@@ -196,15 +265,13 @@ class SessionManager {
   // ── User session management ──────────────────────────────────────────────
 
   private getUserDataDir(userId: string): string {
-    const rawDbPath = process.env.TDLIB_DATABASE_PATH || "./tdlib-data";
-    const basePath = resolvePath(rawDbPath);
-    return path.join(basePath, "users", userId);
+    const { databaseRoot } = this.getStorageRoots();
+    return path.join(databaseRoot, "users", userId);
   }
 
   private getUserFilesDir(userId: string): string {
-    const rawFilesPath = process.env.TDLIB_FILES_PATH || "./tdlib-files";
-    const basePath = resolvePath(rawFilesPath);
-    return path.join(basePath, "users", userId);
+    const { filesRoot } = this.getStorageRoots();
+    return path.join(filesRoot, "users", userId);
   }
 
   /**
@@ -228,23 +295,46 @@ class SessionManager {
     }
 
     // Check if there's a persisted session on disk
-    if (!this.hasPersistedSession(userId)) {
+    const dataDir = this.getUserDataDir(userId);
+    const hasPersisted = this.hasPersistedSession(userId);
+    console.log(
+      `[SessionManager] Session data for ${userId}: ${hasPersisted ? "found" : "missing"} (${dataDir})`,
+    );
+    if (!hasPersisted) {
       throw new Error("Telegram not connected. Please connect your Telegram account first.");
     }
 
     // Need to reactivate — make room if necessary
     await this.ensurePoolCapacity();
 
-    // Create client from persisted session (TDLib auto-restores auth state)
-    const session = await this.createUserClient(userId);
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        // Create client from persisted session (TDLib auto-restores auth state)
+        const session = await this.createUserClient(userId, {
+          cleanupOnFailure: attempt === 2,
+          attempt,
+        });
 
-    // If TDLib already has a valid session on disk, it will go straight to ready
-    // Wait for it to become ready
-    if (session.state !== "ready") {
-      await this.waitForReady(session, 30000);
+        // If TDLib already has a valid session on disk, it will go straight to ready
+        // Wait for it to become ready
+        if (session.state !== "ready") {
+          await this.waitForReady(session, 30000);
+        }
+
+        console.log(`[SessionManager] Session restored for ${userId} (attempt ${attempt})`);
+        return session;
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[SessionManager] Session restore failed for ${userId} (attempt ${attempt}): ${errMsg}`);
+        lastError = err instanceof Error ? err : new Error(errMsg);
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
     }
 
-    return session;
+    throw lastError ?? new Error("Telegram session restore failed");
   }
 
   /**
@@ -641,10 +731,20 @@ class SessionManager {
   /**
    * Create a TDLib client for a user (new or reactivating from disk).
    */
-  private async createUserClient(userId: string): Promise<UserSession> {
+  private async createUserClient(
+    userId: string,
+    options?: { cleanupOnFailure?: boolean; attempt?: number },
+  ): Promise<UserSession> {
+    const attemptLabel = options?.attempt ? ` (attempt ${options.attempt})` : "";
+    const cleanupOnFailure = options?.cleanupOnFailure !== false;
     const { apiId, apiHash } = getApiConfig();
     const dbDir = this.getUserDataDir(userId);
     const filesDir = this.getUserFilesDir(userId);
+
+    const hasSessionFiles = fs.existsSync(dbDir);
+    console.log(
+      `[SessionManager] Reactivating session for ${userId}${attemptLabel} from ${dbDir} (exists=${hasSessionFiles})`,
+    );
 
     fs.mkdirSync(dbDir, { recursive: true });
     fs.mkdirSync(filesDir, { recursive: true });
@@ -719,10 +819,21 @@ class SessionManager {
         err instanceof Error ? err.message : err,
       );
       this.activeSessions.delete(userId);
-      // Clean up invalid session data
       try {
-        if (fs.existsSync(dbDir)) fs.rmSync(dbDir, { recursive: true, force: true });
-      } catch { /* ignore */ }
+        await client.close();
+      } catch {
+        // Ignore close errors
+      }
+      // Clean up invalid session data
+      if (cleanupOnFailure) {
+        try {
+          if (fs.existsSync(dbDir)) fs.rmSync(dbDir, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      } else {
+        console.warn(`[SessionManager] Preserving session data for ${userId} to allow retry`);
+      }
       throw new Error("Telegram session expired. Please reconnect your Telegram account.");
     }
 

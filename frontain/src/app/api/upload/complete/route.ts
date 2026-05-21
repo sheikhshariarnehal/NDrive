@@ -4,9 +4,33 @@ import { resolveUploadThumbnail } from "@/lib/telegram/upload-thumbnail";
 
 const BACKEND_URL = process.env.TDLIB_SERVICE_URL || "http://localhost:3001";
 const API_KEY = process.env.TDLIB_SERVICE_API_KEY || "";
+const STATUS_RETRY_DELAY_MS = 1200;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes — Telegram upload can be slow for large files
+
+async function confirmTelegramDisconnect(userId: string): Promise<boolean> {
+  const checkOnce = async (): Promise<boolean | null> => {
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/telegram/status/${encodeURIComponent(userId)}`,
+        { headers: { "X-API-Key": API_KEY }, signal: AbortSignal.timeout(5000) },
+      );
+      if (!response.ok) return null;
+      const data = await response.json().catch(() => null) as { connected?: boolean } | null;
+      return data?.connected === false;
+    } catch {
+      return null;
+    }
+  };
+
+  const firstCheck = await checkOnce();
+  if (firstCheck !== true) return false;
+
+  await new Promise((resolve) => setTimeout(resolve, STATUS_RETRY_DELAY_MS));
+  const secondCheck = await checkOnce();
+  return secondCheck === true;
+}
 
 /**
  * POST /api/upload/complete
@@ -128,16 +152,21 @@ export async function POST(request: NextRequest) {
     // If the backend detected that the user's Telegram session expired,
     // update DB so the user is informed and can reconnect.
     if (telegramResult.session_expired && userId) {
-      console.warn(`[upload/complete] Telegram session expired for user ${userId}, marking disconnected`);
-      await supabase
-        .from("users")
-        .update({
-          telegram_connected: false,
-          telegram_phone: null,
-          telegram_user_id: null,
-          telegram_connected_at: null,
-        })
-        .eq("id", userId);
+      const confirmedDisconnected = await confirmTelegramDisconnect(userId);
+      if (confirmedDisconnected) {
+        console.warn(`[upload/complete] Telegram session expired for user ${userId}, marking disconnected`);
+        await supabase
+          .from("users")
+          .update({
+            telegram_connected: false,
+            telegram_phone: null,
+            telegram_user_id: null,
+            telegram_connected_at: null,
+          })
+          .eq("id", userId);
+      } else {
+        console.warn(`[upload/complete] session_expired flag not confirmed for ${userId}; preserving connection`);
+      }
     }
 
     return NextResponse.json({ file: fileRecord }, { status: 201 });

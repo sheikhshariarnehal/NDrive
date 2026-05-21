@@ -131,6 +131,7 @@ app.use(
 
 // ─── Startup ─────────────────────────────────────────────────────────
 async function start() {
+  console.log(`[Startup] Backend starting at ${new Date().toISOString()} (pid ${process.pid})`);
   console.log("╔══════════════════════════════════════════╗");
   console.log("║   CloudVault TDLib Service               ║");
   console.log("╚══════════════════════════════════════════╝");
