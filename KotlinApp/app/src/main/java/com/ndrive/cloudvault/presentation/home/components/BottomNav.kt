@@ -1,4 +1,4 @@
-﻿package com.ndrive.cloudvault.presentation.home.components
+package com.ndrive.cloudvault.presentation.home.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -14,49 +14,59 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+
+/**
+ * Static data for bottom nav items. Declared outside the composable
+ * so the lists are created once at class-load time, never during composition.
+ */
+private data class BottomNavItem(
+    val label: String,
+    val route: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+)
+
+private val bottomNavItems = listOf(
+    BottomNavItem("Home", "home", Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem("Starred", "starred", Icons.Filled.Star, Icons.Outlined.StarBorder),
+    BottomNavItem("Photos", "photos", Icons.Filled.Photo, Icons.Outlined.Photo),
+    BottomNavItem("Files", "files", Icons.Filled.Folder, Icons.Outlined.Folder),
+)
 
 @Composable
 fun NDriveBottomNav(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-    val effectiveRoute = if (currentRoute?.startsWith("folder") == true) "files" else currentRoute
 
-    val items = listOf("Home", "Starred", "Photos", "Files")
-    val routes = listOf("home", "starred", "photos", "files")
-
-    val selectedIcons = listOf(
-        Icons.Filled.Home,
-        Icons.Filled.Star,
-        Icons.Filled.Photo,
-        Icons.Filled.Folder
-    )
-    val unselectedIcons = listOf(
-        Icons.Outlined.Home,
-        Icons.Outlined.StarBorder,
-        Icons.Outlined.Photo,
-        Icons.Outlined.Folder
-    )
+    // derivedStateOf ensures we only recompose when the effective route
+    // actually changes, not on every back-stack entry emission.
+    val effectiveRoute by remember {
+        derivedStateOf {
+            val currentRoute = navBackStackEntry?.destination?.route
+            if (currentRoute?.startsWith("folder") == true) "files" else currentRoute
+        }
+    }
 
     NavigationBar {
-        items.forEachIndexed { index, item ->
+        bottomNavItems.forEach { item ->
+            val isSelected = effectiveRoute == item.route
             NavigationBarItem(
                 icon = {
                     Icon(
-                        imageVector = if (effectiveRoute == routes[index]) selectedIcons[index] else unselectedIcons[index],
-                        contentDescription = item
+                        imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.label
                     )
                 },
-                label = { Text(item) },
-                selected = effectiveRoute == routes[index],
+                label = { Text(item.label) },
+                selected = isSelected,
                 onClick = { 
-                    if(effectiveRoute != routes[index]) {
-                        navController.navigate(routes[index]) {
+                    if (effectiveRoute != item.route) {
+                        navController.navigate(item.route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true
                             restoreState = true

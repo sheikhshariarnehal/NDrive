@@ -1,9 +1,13 @@
 package com.ndrive.cloudvault.presentation.home
 
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,14 +24,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,8 +39,12 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -45,23 +53,34 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ndrive.cloudvault.BuildConfig
 import com.ndrive.cloudvault.presentation.common.resolveFileIconStyle
+import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
 import com.ndrive.cloudvault.presentation.home.components.FileCard
 import com.ndrive.cloudvault.presentation.home.components.FileRow
 import com.ndrive.cloudvault.presentation.home.components.FolderCard
 import com.ndrive.cloudvault.presentation.home.components.FolderGridCard
 import com.ndrive.cloudvault.presentation.home.components.GridListToggle
 import com.ndrive.cloudvault.presentation.home.components.NDriveBottomNav
+import com.ndrive.cloudvault.presentation.upload.UploadProgressOverlay
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +91,38 @@ fun FolderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isGridView by remember { mutableStateOf(false) }
+    var showCreateSheet by remember { mutableStateOf(false) }
+    var showCreateFolderDialog by rememberSaveable { mutableStateOf(false) }
+    var newFolderName by rememberSaveable { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState()
+
+    val openDocumentsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { fileUris ->
+        if (fileUris.isNotEmpty()) {
+            fileUris.forEach { fileUri ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        fileUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+            }
+            viewModel.uploadFiles(fileUris)
+        }
+    }
+
+    val takePicturePreviewLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview(),
+    ) { bitmap ->
+        if (bitmap != null) {
+            bitmapToCacheUri(context, bitmap)?.let { cachedUri ->
+                viewModel.uploadFiles(listOf(cachedUri))
+            }
+        }
+    }
 
     LaunchedEffect(folderId) {
         viewModel.loadFolder(folderId)
@@ -79,6 +130,34 @@ fun FolderScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .padding(end = 8.dp, bottom = 8.dp)
+                    .clickable { showCreateSheet = true },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "New",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "New",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp,
+                    )
+                }
+            }
+        },
         bottomBar = { NDriveBottomNav(navController = navController) },
     ) { paddingValues ->
         val pullRefreshState = rememberPullToRefreshState()
@@ -187,6 +266,20 @@ fun FolderScreen(
                                 onToggle = { isGridView = !isGridView },
                             )
                         }
+                    }
+                }
+
+                if (uiState.uploadPanel.isVisible) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        UploadProgressOverlay(
+                            panel = uiState.uploadPanel,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            onToggleExpanded = { viewModel.toggleUploadPanelExpanded() },
+                            onDismissAll = { viewModel.clearUploadState() },
+                            onDismissItem = { itemId -> viewModel.dismissUploadItem(itemId) },
+                        )
                     }
                 }
 
@@ -335,4 +428,99 @@ fun FolderScreen(
             }
         }
     }
+
+    if (showCreateSheet) {
+        CreateNewBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = { showCreateSheet = false },
+            onFolderClick = {
+                showCreateSheet = false
+                showCreateFolderDialog = true
+            },
+            onUploadClick = {
+                showCreateSheet = false
+                openDocumentsLauncher.launch(arrayOf("*/*"))
+            },
+            onScanClick = {
+                showCreateSheet = false
+                takePicturePreviewLauncher.launch(null)
+            },
+        )
+    }
+
+    if (showCreateFolderDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateFolderDialog = false },
+            title = { Text("Create folder") },
+            text = {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    label = { Text("Folder name") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.createFolder(newFolderName)
+                    newFolderName = ""
+                    showCreateFolderDialog = false
+                }) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateFolderDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (uiState.showTelegramConnectPrompt) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTelegramConnectPrompt() },
+            title = { Text("Connect Telegram") },
+            text = {
+                Text(
+                    "Upload needs your Telegram account connection. Connect now to continue uploading files.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.dismissTelegramConnectPrompt()
+                        navController.navigate("profile_route?openTelegramDialog=true") {
+                            launchSingleTop = true
+                        }
+                    },
+                ) {
+                    Text("Connect now")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissTelegramConnectPrompt() }) {
+                    Text("Not now")
+                }
+            },
+        )
+    }
+}
+
+private fun bitmapToCacheUri(context: Context, bitmap: Bitmap): Uri? {
+    val cacheDir = File(context.cacheDir, "scan-cache").apply { mkdirs() }
+    val outputFile = File(cacheDir, "scan_${System.currentTimeMillis()}.jpg")
+
+    return runCatching {
+        FileOutputStream(outputFile).use { stream ->
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)) {
+                throw IOException("Unable to save scan image")
+            }
+        }
+        FileProvider.getUriForFile(
+            context,
+            "${BuildConfig.APPLICATION_ID}.fileprovider",
+            outputFile,
+        )
+    }.getOrNull()
 }

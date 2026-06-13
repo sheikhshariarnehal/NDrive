@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.ndrive.cloudvault.presentation.common.ShimmerColors
 import com.ndrive.cloudvault.presentation.common.shimmerEffect
 
 @Composable
@@ -33,6 +34,8 @@ fun FileCard(
     fileTypeIcon: ImageVector = Icons.Default.Description,
     fileTypeTint: Color = Color(0xFF5F6368),
     isLoading: Boolean = false,
+    shimmerProgress: Float = 0f,
+    shimmerColors: ShimmerColors? = null,
     onClick: () -> Unit
 ) {
     Card(
@@ -45,7 +48,17 @@ fun FileCard(
             .clickable(enabled = !isLoading) { onClick() }
     ) {
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().shimmerEffect())
+            if (shimmerColors != null) {
+                // Optimized: use hoisted animation from parent list
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .shimmerEffect(shimmerProgress, shimmerColors)
+                )
+            } else {
+                // Fallback: self-contained shimmer (for standalone use)
+                Box(modifier = Modifier.fillMaxSize().shimmerEffect())
+            }
             return@Card
         }
 
@@ -65,12 +78,14 @@ fun FileCard(
                         "https://pub-99b846451dcc4c879db177b7e8b60c2f.r2.dev/$thumbnailUrl"
                     }
                     val context = LocalContext.current
-                    val imageRequest = remember(finalUrl, context) {
+                    val imageRequest = remember(finalUrl) {
                         ImageRequest.Builder(context)
                             .data(finalUrl)
                             .crossfade(300)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
+                            // Downsample to a reasonable size for grid thumbnails
+                            .size(400, 400)
                             .build()
                     }
                     AsyncImage(
@@ -131,4 +146,3 @@ fun FileCard(
         }
     }
 }
-

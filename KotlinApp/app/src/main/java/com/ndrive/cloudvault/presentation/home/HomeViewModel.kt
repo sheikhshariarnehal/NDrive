@@ -19,9 +19,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -81,9 +84,34 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private var nextUploadId: Long = 1L
 
+    /**
+     * Pre-filtered folders derived from uiState. Collected directly in the UI
+     * to avoid recomputing the filter inside composition on every recomposition.
+     */
+    val visibleFolders: StateFlow<List<DriveFolder>> = _uiState
+        .map { state ->
+            val q = state.query.trim().lowercase()
+            if (q.isBlank()) state.folders
+            else state.folders.filter { it.name.lowercase().contains(q) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Pre-filtered files derived from uiState.
+     */
+    val visibleFiles: StateFlow<List<DriveFile>> = _uiState
+        .map { state ->
+            val q = state.query.trim().lowercase()
+            if (q.isBlank()) state.files
+            else state.files.filter { it.name.lowercase().contains(q) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     init {
         observeUploadPanel()
-        refresh()
+        // NOTE: Do NOT call refresh() here. The composable's LaunchedEffect
+        // with repeatOnLifecycle(RESUMED) already calls refresh(forceRefreshUserData=true)
+        // on first launch, avoiding a redundant double-fetch.
     }
 
     private fun observeUploadPanel() {
@@ -356,17 +384,5 @@ class HomeViewModel @Inject constructor(
     companion object {
         private const val TELEGRAM_CONNECT_REQUIRED_MESSAGE = "Connect Telegram to continue uploads."
         private const val TELEGRAM_CONNECT_SKIPPED_MESSAGE = "Upload skipped. Connect Telegram first."
-    }
-
-    fun filteredFolders(): List<DriveFolder> {
-        val q = _uiState.value.query.trim().lowercase()
-        if (q.isBlank()) return _uiState.value.folders
-        return _uiState.value.folders.filter { it.name.lowercase().contains(q) }
-    }
-
-    fun filteredFiles(): List<DriveFile> {
-        val q = _uiState.value.query.trim().lowercase()
-        if (q.isBlank()) return _uiState.value.files
-        return _uiState.value.files.filter { it.name.lowercase().contains(q) }
     }
 }

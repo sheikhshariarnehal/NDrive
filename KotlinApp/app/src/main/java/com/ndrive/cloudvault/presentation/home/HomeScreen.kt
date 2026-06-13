@@ -6,6 +6,12 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +73,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ndrive.cloudvault.BuildConfig
+import com.ndrive.cloudvault.presentation.common.rememberShimmerColors
 import com.ndrive.cloudvault.presentation.common.resolveFileIconStyle
 import com.ndrive.cloudvault.presentation.home.components.AppDrawer
 import com.ndrive.cloudvault.presentation.home.components.CreateNewBottomSheet
@@ -81,6 +88,19 @@ import com.ndrive.cloudvault.presentation.upload.UploadProgressOverlay
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+
+/** Pre-computed mapping of folder color string → Color value. */
+private val folderColorMap = mapOf(
+    "red" to Color(0xFFEA4335),
+    "yellow" to Color(0xFFFBBC04),
+    "orange" to Color(0xFFFBBC04),
+    "blue" to Color(0xFF4285F4),
+    "green" to Color(0xFF34A853),
+    "dark" to Color(0xFF5F6368),
+    "gray" to Color(0xFF5F6368),
+    "darkgray" to Color(0xFF5F6368),
+)
+private val defaultFolderColor = Color(0xFF5F6368)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +119,10 @@ fun HomeScreen(
     val sheetState = rememberModalBottomSheetState()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Collect pre-filtered lists from ViewModel (avoids recomputing in composition)
+    val visibleFolders by viewModel.visibleFolders.collectAsStateWithLifecycle()
+    val visibleFiles by viewModel.visibleFiles.collectAsStateWithLifecycle()
+
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -106,8 +130,13 @@ fun HomeScreen(
         }
     }
 
-    val navigateToPreview: (String) -> Unit = { fileId ->
-        navController.navigate("preview/${Uri.encode(fileId)}")
+    // Stable navigation callbacks — remembered so they don't break Compose's
+    // lambda equality check and cause downstream recompositions.
+    val navigateToPreview: (String) -> Unit = remember {
+        { fileId: String -> navController.navigate("preview/${Uri.encode(fileId)}") }
+    }
+    val navigateToFolder: (String) -> Unit = remember {
+        { folderId: String -> navController.navigate("folder/${Uri.encode(folderId)}") }
     }
 
     val openDocumentsLauncher = rememberLauncherForActivityResult(
@@ -134,17 +163,6 @@ fun HomeScreen(
                 viewModel.uploadFiles(listOf(cachedUri))
             }
         }
-    }
-
-    val visibleFolders = remember(uiState.folders, uiState.query) {
-        val q = uiState.query.trim().lowercase()
-        if (q.isBlank()) uiState.folders
-        else uiState.folders.filter { it.name.lowercase().contains(q) }
-    }
-    val visibleFiles = remember(uiState.files, uiState.query) {
-        val q = uiState.query.trim().lowercase()
-        if (q.isBlank()) uiState.files
-        else uiState.files.filter { it.name.lowercase().contains(q) }
     }
 
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -253,6 +271,20 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            // Hoist shimmer animation to the list level so all loading items
+            // share a single animation driver instead of each creating its own.
+            val shimmerColors = rememberShimmerColors()
+            val shimmerTransition = rememberInfiniteTransition(label = "list_shimmer")
+            val shimmerProgress by shimmerTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+                label = "list_shimmer_progress",
+            )
+
         LazyVerticalGrid(
             columns = if (isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
             contentPadding = PaddingValues(
@@ -265,7 +297,11 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(if (isGridView) 12.dp else 0.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item(
+                key = "header",
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = "header",
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -284,7 +320,11 @@ fun HomeScreen(
             }
 
             uiState.errorMessage?.let { errorMessage ->
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                item(
+                    key = "error",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "error",
+                ) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -309,7 +349,11 @@ fun HomeScreen(
             }
 
             if (uiState.uploadPanel.isVisible) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                item(
+                    key = "upload_panel",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "upload_panel",
+                ) {
                     UploadProgressOverlay(
                         panel = uiState.uploadPanel,
                         modifier = Modifier
@@ -326,18 +370,33 @@ fun HomeScreen(
                 items(
                     count = 10,
                     key = { index -> "loading-$index" },
-                    contentType = { "loading" },
+                    contentType = { if (isGridView) "loading-grid" else "loading-list" },
                 ) {
                     if (isGridView) {
-                        FileCard(name = "", isLoading = true) { }
+                        FileCard(
+                            name = "",
+                            isLoading = true,
+                            shimmerProgress = shimmerProgress,
+                            shimmerColors = shimmerColors,
+                        ) { }
                     } else {
-                        FileRow(name = "", subtitle = "", isLoading = true) { }
+                        FileRow(
+                            name = "",
+                            subtitle = "",
+                            isLoading = true,
+                            shimmerProgress = shimmerProgress,
+                            shimmerColors = shimmerColors,
+                        ) { }
                     }
                 }
             } else {
                 if (visibleFolders.isNotEmpty()) {
                     if (isGridView) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
+                        item(
+                            key = "folders_header",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = "section_header",
+                        ) {
                             Text(
                                 text = "Folders",
                                 style = MaterialTheme.typography.titleSmall,
@@ -351,36 +410,34 @@ fun HomeScreen(
                     items(
                         count = visibleFolders.size,
                         key = { index -> visibleFolders[index].id },
-                        contentType = { "folder" },
+                        contentType = { if (isGridView) "folder-grid" else "folder-list" },
                     ) { index ->
                         val folder = visibleFolders[index]
                         if (isGridView) {
                             FolderGridCard(name = folder.name) {
-                                navController.navigate("folder/${Uri.encode(folder.id)}")
+                                navigateToFolder(folder.id)
                             }
                         } else {
                             val subtitle = "Modified ${folder.updatedAt?.take(10) ?: "Unknown"}"
-                            val folderTint = when (folder.color?.lowercase()) {
-                                "red" -> Color(0xFFEA4335)
-                                "yellow", "orange" -> Color(0xFFFBBC04)
-                                "blue" -> Color(0xFF4285F4)
-                                "green" -> Color(0xFF34A853)
-                                "dark", "gray", "darkgray" -> Color(0xFF5F6368)
-                                else -> Color(0xFF5F6368)
-                            }
+                            val folderTint = folder.color?.lowercase()?.let { folderColorMap[it] }
+                                ?: defaultFolderColor
                             FolderCard(
                                 name = folder.name,
                                 subtitle = subtitle,
-                                iconTint = folder.color?.let { folderTint } ?: Color(0xFF5F6368),
+                                iconTint = folderTint,
                             ) {
-                                navController.navigate("folder/${Uri.encode(folder.id)}")
+                                navigateToFolder(folder.id)
                             }
                         }
                     }
                 }
 
                 if (visibleFiles.isNotEmpty() && isGridView) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item(
+                        key = "files_header",
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = "section_header",
+                    ) {
                         Text(
                             text = "Files",
                             style = MaterialTheme.typography.titleSmall,
@@ -394,7 +451,7 @@ fun HomeScreen(
                 items(
                     count = visibleFiles.size,
                     key = { index -> visibleFiles[index].id },
-                    contentType = { "file" },
+                    contentType = { if (isGridView) "file-grid" else "file-list" },
                 ) { index ->
                     val file = visibleFiles[index]
                     val fileIconStyle = remember(file.name, file.mimeType) {
@@ -429,7 +486,11 @@ fun HomeScreen(
                 }
 
                 if (visibleFolders.isEmpty() && visibleFiles.isEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item(
+                        key = "empty",
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = "empty",
+                    ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()

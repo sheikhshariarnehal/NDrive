@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ndrive.cloudvault.presentation.common.ShimmerColors
 import com.ndrive.cloudvault.presentation.common.shimmerEffect
 
 @Composable
@@ -26,16 +27,30 @@ fun FileRow(
     isLoading: Boolean = false,
     iconTint: Color = Color(0xFFF28B82), // Google red logic for some files, fallback
     iconVector: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Description,
+    shimmerProgress: Float = 0f,
+    shimmerColors: ShimmerColors? = null,
     onClick: () -> Unit
 ) {
     if (isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .shimmerEffect()
-        )
+        if (shimmerColors != null) {
+            // Optimized: use hoisted animation from parent list
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shimmerEffect(shimmerProgress, shimmerColors)
+            )
+        } else {
+            // Fallback: self-contained shimmer
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shimmerEffect()
+            )
+        }
         return
     }
 
