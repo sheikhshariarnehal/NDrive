@@ -63,6 +63,7 @@ data class HomeUiState(
     val errorMessage: String? = null,
     val uploadPanel: UploadPanelState = UploadPanelState(),
     val showTelegramConnectPrompt: Boolean = false,
+    val isUserDataLoaded: Boolean = false,
 )
 
 @HiltViewModel
@@ -93,23 +94,34 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun refresh() {
+    fun refresh(forceRefreshUserData: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
+            val shouldFetchUserData = forceRefreshUserData || !_uiState.value.isUserDataLoaded
+
             val foldersDeferred = async { folderRepository.getRootFolders(limit = 20) }
             val filesDeferred = async { fileRepository.getRecentFiles(limit = 60) }
-            val telegramStatusDeferred = async { telegramRepository.getStatus() }
-            val profileDeferred = async { authRepository.getCurrentAuthProfile() }
+            val telegramStatusDeferred = if (shouldFetchUserData) {
+                async { telegramRepository.getStatus() }
+            } else null
+            val profileDeferred = if (shouldFetchUserData) {
+                async { authRepository.getCurrentAuthProfile() }
+            } else null
 
             val folderResult = foldersDeferred.await()
             val fileResult = filesDeferred.await()
-            val telegramStatusResult = telegramStatusDeferred.await()
-            val profile = profileDeferred.await()
-            val profileInitial = resolveProfileInitial(
-                displayName = profile?.displayName,
-                email = profile?.email,
-            )
+            val telegramStatusResult = telegramStatusDeferred?.await()
+            val profile = profileDeferred?.await()
+
+            val profileInitial = if (shouldFetchUserData && profile != null) {
+                resolveProfileInitial(
+                    displayName = profile.displayName,
+                    email = profile.email,
+                )
+            } else {
+                _uiState.value.profileInitial
+            }
 
             val error = folderResult.exceptionOrNull()?.message
                 ?: fileResult.exceptionOrNull()?.message
@@ -119,9 +131,10 @@ class HomeViewModel @Inject constructor(
                     isLoading = false,
                     folders = folderResult.getOrElse { emptyList() },
                     files = fileResult.getOrElse { emptyList() },
-                    profileAvatarUrl = profile?.avatarUrl,
+                    profileAvatarUrl = if (shouldFetchUserData) profile?.avatarUrl else it.profileAvatarUrl,
                     profileInitial = profileInitial,
-                    isTelegramConnected = telegramStatusResult.getOrNull()?.connected ?: it.isTelegramConnected,
+                    isTelegramConnected = if (shouldFetchUserData) (telegramStatusResult?.getOrNull()?.connected ?: it.isTelegramConnected) else it.isTelegramConnected,
+                    isUserDataLoaded = it.isUserDataLoaded || shouldFetchUserData,
                     errorMessage = error,
                 )
             }

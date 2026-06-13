@@ -8,12 +8,14 @@ import com.ndrive.cloudvault.domain.repository.FileRepository
 import com.ndrive.cloudvault.domain.repository.FolderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class FolderBreadcrumb(
     val id: String?,
@@ -100,7 +102,7 @@ class FolderViewModel @Inject constructor(
         activeFolderId?.let { loadFolder(it) }
     }
 
-    private suspend fun buildBreadcrumbs(folder: DriveFolder): List<FolderBreadcrumb> {
+    private suspend fun buildBreadcrumbs(folder: DriveFolder): List<FolderBreadcrumb> = withContext(Dispatchers.IO) {
         val chain = mutableListOf<DriveFolder>()
         val seen = mutableSetOf<String>()
 
@@ -115,6 +117,6 @@ class FolderViewModel @Inject constructor(
             .asReversed()
             .map { FolderBreadcrumb(id = it.id, name = it.name) }
 
-        return listOf(FolderBreadcrumb(id = null, name = "My Drive")) + folderCrumbs
+        listOf(FolderBreadcrumb(id = null, name = "My Drive")) + folderCrumbs
     }
 }

@@ -6,23 +6,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.ndrive.cloudvault.presentation.auth.AuthViewModel
 import com.ndrive.cloudvault.presentation.auth.LoginScreen
 import com.ndrive.cloudvault.presentation.auth.SignupScreen
 import com.ndrive.cloudvault.presentation.home.HomeScreen
@@ -33,6 +26,9 @@ import com.ndrive.cloudvault.presentation.home.PhotosScreen
 import com.ndrive.cloudvault.presentation.preview.PreviewScreen
 import com.ndrive.cloudvault.presentation.profile.ProfileScreen
 import com.ndrive.cloudvault.presentation.search.SearchScreen
+import com.ndrive.cloudvault.presentation.splash.SplashDestination
+import com.ndrive.cloudvault.presentation.splash.SplashScreen
+import com.ndrive.cloudvault.presentation.splash.SplashViewModel
 import com.ndrive.cloudvault.presentation.upload.UploadsScreen
 
 @Composable
@@ -53,27 +49,29 @@ fun NDriveNavGraph(navController: NavHostController) {
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
         }
     ) {
-        composable("startup") {
-            val viewModel: AuthViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+        composable(
+            "startup",
+            enterTransition = { fadeIn(animationSpec = tween(0)) },
+            exitTransition = { fadeOut(animationSpec = tween(400)) },
+        ) {
+            val viewModel: SplashViewModel = hiltViewModel()
+            val destination by viewModel.destination.collectAsState()
 
-            LaunchedEffect(uiState.isLoading, uiState.navigateToHome) {
-                if (uiState.isLoading) return@LaunchedEffect
+            LaunchedEffect(destination) {
+                if (destination == SplashDestination.LOADING) return@LaunchedEffect
 
-                val destination = if (uiState.navigateToHome) "home" else "login"
-                viewModel.onNavigationHandled()
-                navController.navigate(destination) {
+                val route = when (destination) {
+                    SplashDestination.HOME -> "home"
+                    SplashDestination.LOGIN -> "login"
+                    else -> return@LaunchedEffect
+                }
+                navController.navigate(route) {
                     popUpTo("startup") { inclusive = true }
                     launchSingleTop = true
                 }
             }
 
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
+            SplashScreen()
         }
 
         composable("login") {

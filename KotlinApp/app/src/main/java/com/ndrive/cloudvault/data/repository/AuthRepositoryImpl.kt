@@ -8,6 +8,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.Google
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.json.buildJsonObject
@@ -22,14 +24,14 @@ class AuthRepositoryImpl @Inject constructor(
 
 	override fun isConfigured(): Boolean = configurationError() == null
 
-	override suspend fun hasActiveSession(): Boolean {
-		if (!isConfigured()) return false
+	override suspend fun hasActiveSession(): Boolean = withContext(Dispatchers.IO) {
+		if (!isConfigured()) return@withContext false
 		supabaseClient.auth.awaitInitialization()
 
-		if (supabaseClient.auth.currentSessionOrNull() != null) return true
-		if (supabaseClient.auth.currentUserOrNull() != null) return true
+		if (supabaseClient.auth.currentSessionOrNull() != null) return@withContext true
+		if (supabaseClient.auth.currentUserOrNull() != null) return@withContext true
 
-		return try {
+		try {
 			supabaseClient.auth.retrieveUserForCurrentSession(updateSession = true)
 			true
 		} catch (_: Exception) {
@@ -37,9 +39,9 @@ class AuthRepositoryImpl @Inject constructor(
 		}
 	}
 
-	override suspend fun getCurrentAuthProfile(): AuthProfile? {
-		if (!isConfigured()) return null
-		val user = resolveCurrentUserOrNull() ?: return null
+	override suspend fun getCurrentAuthProfile(): AuthProfile? = withContext(Dispatchers.IO) {
+		if (!isConfigured()) return@withContext null
+		val user = resolveCurrentUserOrNull() ?: return@withContext null
 
 		val metadata = user.userMetadata
 		val displayName = metadata?.get("display_name")?.jsonPrimitive?.contentOrNull
@@ -47,7 +49,7 @@ class AuthRepositoryImpl @Inject constructor(
 		val avatarUrl = metadata?.get("avatar_url")?.jsonPrimitive?.contentOrNull
 			?: metadata?.get("picture")?.jsonPrimitive?.contentOrNull
 
-		return AuthProfile(
+		AuthProfile(
 			id = user.id,
 			email = user.email,
 			displayName = displayName,
@@ -57,20 +59,24 @@ class AuthRepositoryImpl @Inject constructor(
 		)
 	}
 
-	override suspend fun signIn(email: String, password: String): Result<Unit> = runCatching {
-		ensureConfigured()
-		supabaseClient.auth.signInWith(Email) {
-			this.email = email.trim()
-			this.password = password
+	override suspend fun signIn(email: String, password: String): Result<Unit> = withContext(Dispatchers.IO) {
+		runCatching {
+			ensureConfigured()
+			supabaseClient.auth.signInWith(Email) {
+				this.email = email.trim()
+				this.password = password
+			}
+			check(hasActiveSession()) { "Sign in succeeded but no active session was found." }
 		}
-		check(hasActiveSession()) { "Sign in succeeded but no active session was found." }
 	}
 
-	override suspend fun signInWithGoogle(): Result<Unit> = runCatching {
-		ensureConfigured()
-		supabaseClient.auth.signInWith(Google) {
-			scopes.add("email")
-			scopes.add("profile")
+	override suspend fun signInWithGoogle(): Result<Unit> = withContext(Dispatchers.IO) {
+		runCatching {
+			ensureConfigured()
+			supabaseClient.auth.signInWith(Google) {
+				scopes.add("email")
+				scopes.add("profile")
+			}
 		}
 	}
 
@@ -78,34 +84,40 @@ class AuthRepositoryImpl @Inject constructor(
 		displayName: String,
 		email: String,
 		password: String
-	): Result<SignUpResult> = runCatching {
-		ensureConfigured()
-		val normalizedDisplayName = displayName.trim()
-		supabaseClient.auth.signUpWith(Email) {
-			this.email = email.trim()
-			this.password = password
-			if (normalizedDisplayName.isNotBlank()) {
-				data = buildJsonObject {
-					put("display_name", normalizedDisplayName)
-					put("full_name", normalizedDisplayName)
-					put("auth_source", "android")
+	): Result<SignUpResult> = withContext(Dispatchers.IO) {
+		runCatching {
+			ensureConfigured()
+			val normalizedDisplayName = displayName.trim()
+			supabaseClient.auth.signUpWith(Email) {
+				this.email = email.trim()
+				this.password = password
+				if (normalizedDisplayName.isNotBlank()) {
+					data = buildJsonObject {
+						put("display_name", normalizedDisplayName)
+						put("full_name", normalizedDisplayName)
+						put("auth_source", "android")
+					}
 				}
 			}
+			SignUpResult(authenticated = hasActiveSession())
 		}
-		SignUpResult(authenticated = hasActiveSession())
 	}
 
-	override suspend fun sendPasswordRecovery(email: String): Result<Unit> = runCatching {
-		ensureConfigured()
-		supabaseClient.auth.resetPasswordForEmail(
-			email = email.trim(),
-			redirectUrl = null
-		)
+	override suspend fun sendPasswordRecovery(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+		runCatching {
+			ensureConfigured()
+			supabaseClient.auth.resetPasswordForEmail(
+				email = email.trim(),
+				redirectUrl = null
+			)
+		}
 	}
 
-	override suspend fun signOut(): Result<Unit> = runCatching {
-		if (!isConfigured()) return@runCatching
-		supabaseClient.auth.signOut()
+	override suspend fun signOut(): Result<Unit> = withContext(Dispatchers.IO) {
+		runCatching {
+			if (!isConfigured()) return@runCatching
+			supabaseClient.auth.signOut()
+		}
 	}
 
 	private suspend fun resolveCurrentUserOrNull() = try {

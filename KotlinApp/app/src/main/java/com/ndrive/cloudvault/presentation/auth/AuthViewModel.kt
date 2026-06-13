@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 data class AuthUiState(
 	val isConfigured: Boolean = true,
-	val isLoading: Boolean = false,
+	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
 	val infoMessage: String? = null,
 	val navigateToHome: Boolean = false,
@@ -198,6 +198,7 @@ class AuthViewModel @Inject constructor(
 		if (!authRepository.isConfigured()) {
 			_uiState.value = _uiState.value.copy(
 				isConfigured = false,
+				isLoading = false,
 				errorMessage = "Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in local.properties."
 			)
 			return

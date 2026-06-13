@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Ndrive" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Ndrive.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0A1929</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Ndrive</item>
+    </style>
 </resources>

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,13 +65,16 @@ fun FileCard(
                         "https://pub-99b846451dcc4c879db177b7e8b60c2f.r2.dev/$thumbnailUrl"
                     }
                     val context = LocalContext.current
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val imageRequest = remember(finalUrl, context) {
+                        ImageRequest.Builder(context)
                             .data(finalUrl)
                             .crossfade(300)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = imageRequest,
                         contentDescription = name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()

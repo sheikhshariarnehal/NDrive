@@ -7,4 +7,5 @@ interface FileRepository {
         suspend fun getStarredFiles(limit: Int = 50): Result<List<DriveFile>>   
         suspend fun getRootFiles(limit: Int = 100): Result<List<DriveFile>>
         suspend fun getFilesByFolderId(folderId: String, limit: Int = 200): Result<List<DriveFile>>
+        suspend fun getPhotoFiles(limit: Int = 100): Result<List<DriveFile>>
 }
